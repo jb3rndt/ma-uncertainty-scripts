@@ -2,10 +2,13 @@ import datetime
 import json
 from hashlib import sha1
 from pathlib import Path
-from typing import List
+from typing import List, Literal
 
 from metis.dq_orchestrator import DQOrchestrator
 from metis.metric.config import MetricConfig
+
+DSLiteral = Literal["weather", "auto_sales", "movies", "open_library"]
+datasets: List[DSLiteral] = ["weather", "auto_sales", "movies", "open_library"]
 
 
 def materialize(data: str | dict, file_path: Path | str | None = None) -> str:
@@ -35,10 +38,11 @@ def materialize(data: str | dict, file_path: Path | str | None = None) -> str:
 def execute_run(
     id: str | None = None,
     *,
-    folder: str,
+    polluted_folder: str,
+    clean_folder: str,
     metrics: List[str],
     metric_configs: List[str | None | MetricConfig],
-    datasets: List[str] = ["weather_training_data", "auto_sales_data", "movies"],
+    datasets: List[DSLiteral] = datasets,
 ) -> None:
     start_time = datetime.datetime.now()
 
@@ -51,18 +55,31 @@ def execute_run(
         )
     )
 
+    eligible_datasets = [
+        dataset
+        for dataset in datasets
+        if Path(f"{polluted_folder}/{dataset}.polluted.csv").exists()
+    ]
+    polluted_paths = [
+        Path(f"{polluted_folder}/{dataset}.polluted.csv")
+        for dataset in eligible_datasets
+    ]
+    clean_paths = [
+        Path(f"{clean_folder}/{dataset}.csv") for dataset in eligible_datasets
+    ]
+
     orchestrator.load(
         data_loader_configs=[
             materialize(
                 {
                     "loader": "CSV",
-                    "name": dataset,
-                    "file_name": f"{folder}/polluted_{dataset}.csv",
+                    "name": path.stem,
+                    "file_name": str(path),
                 },
-                f"results/{id}/{dataset}_loader_config.json",
+                f"results/{id}/{path.stem}.loader_config.json",
             )
-            for dataset in datasets
-            if Path(f"{folder}/polluted_{dataset}.csv").exists()
+            for path in (polluted_paths + clean_paths)
+            if path.exists()
         ]
     )
 
