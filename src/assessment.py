@@ -1,0 +1,277 @@
+import re
+from pathlib import Path
+from typing import List
+
+import pandas as pd
+
+from metis.metric.completeness.completeness_nullAndDMVRate import (
+    completeness_nullAndDMVRate,
+)
+from metis.metric.completeness.completeness_nullAndDMVRate_config import (
+    completeness_nullAndDMVRate_config,
+)
+from metis.metric.completeness.completeness_nullRate import completeness_nullRate
+from metis.metric.completeness.completeness_nullRate_config import (
+    completeness_nullRate_config,
+)
+from metis.metric.config import MetricConfig
+from metis.metric.consistency.consistency_ruleBasedPipino import (
+    consistency_ruleBasedPipino,
+)
+from metis.metric.consistency.consistency_ruleBasedPipino_config import (
+    consistency_ruleBasedPipino_config,
+)
+from metis.metric.timeliness.timeliness_heinrich import timeliness_heinrich
+from metis.metric.timeliness.timeliness_heinrich_config import (
+    timeliness_heinrich_config,
+)
+from metis.utils.datetime.datetime_precision import determine_datetime_precision
+from src.constants import OL_COLUMN_CHANGE_RATES
+from src.utils import execute_run
+
+NUMBER_REGEX = re.compile(r"^\-?\d+(\.\d+)?")
+
+
+def extract_number(value: str | float | int):
+    if isinstance(value, float) or isinstance(value, int):
+        return float(value)
+    match = NUMBER_REGEX.match(value)
+    if match:
+        return float(match.group(0))
+    raise ValueError(f"Could not extract number from value: {value}")
+
+
+def is_number(value: str) -> bool:
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+
+def is_datetime(value: str) -> bool:
+    try:
+        pd.to_datetime(value)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def contains_expected_datetime_format(value: str, format: str) -> bool:
+    try:
+        pd.to_datetime(value, exact=False, format=format)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+temp_rules = [
+    lambda value: (extract_number(value) >= -10 and extract_number(value) <= 50),
+    lambda value: str(extract_number(value))[::-1].find(".") == 1,
+    lambda value: is_number(value),
+]
+
+
+def is_duration_format(value: str) -> bool:
+    parts = value.split(" ")
+    if len(parts) != 2:
+        return False
+    number_part = parts[0]
+    if not is_number(number_part):
+        return False
+    return True
+
+
+def is_minute_unit(value: str) -> bool:
+    parts = value.split(" ")
+    if len(parts) != 2:
+        return False
+    unit_part = parts[1]
+    return unit_part in ["min", "m"]
+
+
+def is_min_abbr(value: str) -> bool:
+    parts = value.split(" ")
+    if len(parts) != 2:
+        return False
+    unit_part = parts[1]
+    return unit_part == "min"
+
+
+def get_datetime_part(value: str) -> str:
+    location = re.search(r"\(.*\)", value)
+    if not location:
+        return value
+    return value.replace(location.group(0), "").strip()
+
+
+def is_datetime_with_location(value: str) -> bool:
+    location = re.search(r"\(.*\)", value)
+    if not location:
+        return False
+    dt_part = get_datetime_part(value)
+    return is_datetime(dt_part)
+
+
+def location_is_at_end(value: str) -> bool:
+    match = re.search(r"\(.*\)", value)
+    if not match:
+        return False
+    return match.end() == len(value)
+
+
+def assess_consistency(folder: Path):
+    if (folder / "results").exists():
+        print(
+            f"Results folder {(folder / 'results').absolute()} already exists. SKIPPING!"
+        )
+        return folder / "results"
+
+    metrics = [consistency_ruleBasedPipino.__name__]
+    metric_configs: List[str | None | MetricConfig] = [
+        consistency_ruleBasedPipino_config(
+            attribute_rules={
+                "MinTemp": temp_rules,
+                "MaxTemp": temp_rules,
+                "PRICEEACH": [
+                    lambda value: is_number(value),
+                    lambda value: is_number(value)
+                    or (not is_number(value) and "$" in value),
+                ],
+                "ORDERDATE": [
+                    lambda value: is_datetime(value),
+                    lambda value: (
+                        is_datetime(value)
+                        and contains_expected_datetime_format(value, "%d/%m/%Y")
+                    ),
+                    lambda value: (
+                        is_datetime(value)
+                        and determine_datetime_precision(value) == "day"
+                    ),
+                ],
+                "Duration": [
+                    lambda value: is_duration_format(value),
+                    lambda value: is_minute_unit(value),
+                    lambda value: is_min_abbr(value),
+                ],
+                "Release Date": [
+                    lambda value: is_datetime_with_location(value),
+                    lambda value: location_is_at_end(value),
+                    lambda value: contains_expected_datetime_format(
+                        get_datetime_part(value), "%d %B %Y"  # e.g., "25 December 2020"
+                    ),
+                    lambda value: determine_datetime_precision(get_datetime_part(value))
+                    == "day",
+                ],
+            },
+        ),
+    ]
+
+    return execute_run(
+        results_folder=folder / "results",
+        polluted_folder=folder,
+        metrics=metrics,
+        metric_configs=metric_configs,
+    )
+
+
+def assess_completeness(folder: Path):
+    if (folder / "results").exists():
+        print(
+            f"Results folder {(folder / 'results').absolute()} already exists. SKIPPING!"
+        )
+        return folder / "results"
+
+    return execute_run(
+        results_folder=folder / "results",
+        polluted_folder=folder,
+        metrics=[completeness_nullAndDMVRate.__name__, completeness_nullRate.__name__],
+        metric_configs=[
+            completeness_nullAndDMVRate_config(
+                aggregation_axis="columns", aggregate_all=False
+            ),
+            completeness_nullRate_config(
+                aggregation_axis="columns", aggregate_all=False
+            ),
+        ],
+    )
+
+
+def assess_timeliness(folder: Path):
+    if (folder / "results").exists():
+        print(
+            f"Results folder {(folder / 'results').absolute()} already exists. SKIPPING!"
+        )
+        return folder / "results"
+
+    metrics = [timeliness_heinrich.__name__]
+    metric_configs: List[str | None | MetricConfig] = [
+        timeliness_heinrich_config(
+            decline_rate_per_column={
+                "ADDRESSLINE1": 0.1 / 365.25,
+            },
+            ingestion_date_column="ORDERDATE",
+            to_datetime_kwargs={"dayfirst": True},
+            simulated_assessment_date="2021-05-30",  # newest entry in auto sales data: 2020-05-30T22:00:00.000Z
+        ),
+    ]
+
+    results_folder_one = execute_run(
+        results_folder=folder / "results_AS",
+        polluted_folder=folder,
+        metrics=metrics,
+        metric_configs=metric_configs,
+        datasets=["auto_sales"],
+    )
+
+    metrics = [timeliness_heinrich.__name__]
+    metric_configs: List[str | None | MetricConfig] = [
+        timeliness_heinrich_config(
+            decline_rate_per_column={
+                col: stats["avg_changes"] / stats["avg_time"]
+                for col, stats in sorted(
+                    list(OL_COLUMN_CHANGE_RATES.items()),
+                    key=lambda item: (
+                        item[1]["avg_changes"] / item[1]["avg_time"]
+                        if item[1]["avg_time"] is not None
+                        and item[1]["avg_changes"] is not None
+                        and item[0]
+                        not in [
+                            "last_modified",
+                            "latest_revision",
+                            "revision",
+                            "created",
+                        ]
+                        else 0
+                    ),
+                    reverse=True,
+                )[:5]
+                if stats["avg_time"] is not None and stats["avg_changes"] is not None
+            },
+            ingestion_date_column="last_modified",
+            to_datetime_kwargs={"format": "ISO8601"},
+            simulated_assessment_date="2026-01-01",  # newest entry in open library data: 2025-12-31T22:00:00.274823
+            simulated_timestamp_precision="year",
+        ),
+    ]
+
+    results_folder_two = execute_run(
+        results_folder=folder / "results",
+        polluted_folder=folder,
+        metrics=metrics,
+        metric_configs=metric_configs,
+        datasets=["open_library"],
+    )
+
+    df_one = pd.read_csv(results_folder_one / "dq_results.csv")
+    df_two = pd.read_csv(results_folder_two / "dq_results.csv")
+    combined_df = pd.concat([df_one, df_two], ignore_index=True)
+    # Save everything into second folder and remove first folder
+    combined_df.to_csv(results_folder_two / "dq_results.csv", index=False)
+    for file in results_folder_one.glob("*"):
+        prefix = "one_" if (results_folder_two / file.name).exists() else ""
+        if file.name != "dq_results.csv":
+            file.rename(results_folder_two / f"{prefix}{file.name}")
+    (results_folder_one / "dq_results.csv").unlink()
+    results_folder_one.rmdir()
+    return results_folder_two

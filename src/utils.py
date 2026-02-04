@@ -2,7 +2,9 @@ import datetime
 import json
 from hashlib import sha1
 from pathlib import Path
-from typing import List, Literal
+from typing import Generator, List, Literal, Tuple, cast
+
+import pandas as pd
 
 from metis.dq_orchestrator import DQOrchestrator
 from metis.metric.config import MetricConfig
@@ -36,36 +38,27 @@ def materialize(data: str | dict, file_path: Path | str | None = None) -> str:
 
 
 def execute_run(
-    id: str | None = None,
     *,
-    polluted_folder: str,
-    clean_folder: str,
+    results_folder: Path,
+    polluted_folder: Path,
     metrics: List[str],
     metric_configs: List[str | None | MetricConfig],
     datasets: List[DSLiteral] = datasets,
-) -> None:
+) -> Path:
     start_time = datetime.datetime.now()
 
-    if not id:
-        id = start_time.strftime("%Y%m%d_%H%M%S")
-
+    results_folder.mkdir(parents=True, exist_ok=True)
     orchestrator = DQOrchestrator(
         writer_config_path=materialize(
-            {"writer_name": "csv", "path": f"results/{id}/dq_results.csv"}
+            {"writer_name": "csv", "path": str(results_folder / "dq_results.csv")}
         )
     )
 
-    eligible_datasets = [
-        dataset
-        for dataset in datasets
-        if Path(f"{polluted_folder}/{dataset}.polluted.csv").exists()
-    ]
-    polluted_paths = [
-        Path(f"{polluted_folder}/{dataset}.polluted.csv")
-        for dataset in eligible_datasets
-    ]
-    clean_paths = [
-        Path(f"{clean_folder}/{dataset}.csv") for dataset in eligible_datasets
+    data_paths = [
+        file
+        for file in polluted_folder.glob("*.csv")
+        if not file.name.endswith(".mask.csv")
+        and any(dataset in file.name for dataset in datasets)
     ]
 
     orchestrator.load(
@@ -76,17 +69,16 @@ def execute_run(
                     "name": path.stem,
                     "file_name": str(path),
                 },
-                f"results/{id}/{path.stem}.loader_config.json",
+                str(results_folder / f"{path.stem}.loader_config.json"),
             )
-            for path in (polluted_paths + clean_paths)
-            if path.exists()
+            for path in data_paths
         ]
     )
 
     orchestrator.assess(metrics=metrics, metric_configs=metric_configs)
 
     with open(
-        f"results/{id}/dq_orchestrator_config.json", "w"
+        results_folder / "dq_orchestrator_config.json", "w"
     ) as orchestrator_config_file:
         json.dump(
             {"metrics": metrics, "metric_configs": metric_configs},
@@ -98,6 +90,43 @@ def execute_run(
     end_time = datetime.datetime.now()
     print(f"DQ run completed in {end_time - start_time}")
 
-    # print(
-    #     f"SELECT * FROM dqresults WHERE mes_time BETWEEN '{start_time.isoformat()}' AND '{end_time.isoformat()}';"
-    # )
+    return results_folder
+
+
+def parse_columnNames(columnNames_str: str) -> str:
+    columnNames = json.loads(str(columnNames_str).replace("'", '"'))
+    return columnNames[0] if len(columnNames) == 1 else ",".join(columnNames)
+
+
+def grouped_results_and_certainties(
+    flat_results: pd.DataFrame,
+) -> Generator[Tuple[str, str, pd.DataFrame, pd.DataFrame], None, None]:
+    for key, index in flat_results.groupby(["tableName", "DQmetric"]).groups.items():
+        tableName, DQmetric = cast(tuple, key)
+        metric = str(DQmetric)
+        dataset = str(tableName)
+        group = flat_results.loc[index]
+        dq_results = pd.DataFrame(
+            None, index=pd.RangeIndex(stop=group["rowIndex"].max() + 1)
+        )
+        dq_certainties = pd.DataFrame(None, index=dq_results.index)
+
+        for column_key, data in group.groupby("columnNames"):
+            column = parse_columnNames(str(column_key))
+            dq_results.loc[data["rowIndex"].tolist(), column] = data[
+                "DQvalue"
+            ].to_numpy()
+
+            dq_certainties.loc[data["rowIndex"].tolist(), column] = (
+                data["DQexplanation"]
+                .apply(
+                    lambda x: (
+                        json.loads(str(x).replace("'", '"'))["certainty"]
+                        if x and not pd.isna(x) and len(x) > 0
+                        else 1.0
+                    )
+                )
+                .to_numpy()
+            )
+
+        yield dataset, metric, dq_results, dq_certainties
