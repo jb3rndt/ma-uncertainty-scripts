@@ -6,20 +6,17 @@ from src.evaluation import evaluate_run
 
 
 def main():
-    with open("../data-pollution/latest_pollutions.json", "r") as f:
+    with open("../data-pollution/.latest_pollutions.json", "r") as f:
         latest = json.load(f)
 
     all_result_folders = []
-    polluted_folders_base = Path(
-        "/Users/jberndt/Documents/Masterarbeit/Metis/data/local/polluted/"
-    )
 
     for folder in latest["polluted_folders"]:
         all_result_folders.extend(
             [
-                assess_completeness(polluted_folders_base / folder / "completeness"),
-                assess_consistency(polluted_folders_base / folder / "consistency"),
-                assess_timeliness(polluted_folders_base / folder / "timeliness"),
+                assess_completeness(Path(folder) / "completeness"),
+                assess_consistency(Path(folder) / "consistency"),
+                assess_timeliness(Path(folder) / "timeliness"),
             ]
         )
 

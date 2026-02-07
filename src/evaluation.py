@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Dict, List, Literal, Tuple
+from typing import Callable, Dict, List, Literal, Tuple
 
 import pandas as pd
 
@@ -12,7 +12,15 @@ def mse_per_column(expected: pd.DataFrame, predicted: pd.DataFrame) -> pd.Series
     return errors.mean()
 
 
-def evaluate_run(results_folder: Path):
+def evaluate_run(
+    results_folder: Path,
+    callback: (
+        Callable[
+            [str, str, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame], None
+        ]
+        | None
+    ) = None,
+):
     data_configs: List[Tuple[Path, str]] = [
         (file, file.name.replace(".loader_config.json", ""))
         for file in results_folder.rglob("*.loader_config.json")
@@ -88,13 +96,17 @@ def evaluate_run(results_folder: Path):
             }
         ).to_dict()
 
+        if callback:
+            callback(dataset, metric, data, mask, dq_results, dq_certainties)
+
         # print(evaluate_aggregation_methods(dq_results, dq_certainties, mask))
 
         # plot_accuracy_by_threshold(dq_results, ~mask, dq_results.columns.tolist())
         # plot_f1_score_by_threshold(dq_results, ~mask, dq_results.columns.tolist())
         # plot_pr_auc_curve(dq_results, ~mask, dq_results.columns.tolist())
 
-    evaluations_file = results_folder / "evaluations.json"
-    json.dump(evaluations, open(evaluations_file, "w"), indent=2)
-    print(f"Saved evaluations to {evaluations_file.absolute()}")
-    return evaluations
+    if not callback:
+        evaluations_file = results_folder / "evaluations.json"
+        json.dump(evaluations, open(evaluations_file, "w"), indent=2)
+        print(f"Saved evaluations to {evaluations_file.absolute()}")
+        return evaluations

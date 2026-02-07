@@ -98,6 +98,10 @@ def parse_columnNames(columnNames_str: str) -> str:
     return columnNames[0] if len(columnNames) == 1 else ",".join(columnNames)
 
 
+def format_columnName(columnName: str) -> str:
+    return "full_tuple" if "," in columnName else columnName
+
+
 def grouped_results_and_certainties(
     flat_results: pd.DataFrame,
 ) -> Generator[Tuple[str, str, pd.DataFrame, pd.DataFrame], None, None]:

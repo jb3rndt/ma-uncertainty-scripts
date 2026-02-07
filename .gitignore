@@ -220,3 +220,7 @@ data
 results
 tmp
 metis
+
+.*
+!.gitignore
+!.python-version
