@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 import pandas as pd
 
@@ -39,6 +39,10 @@ def extract_number(value: str | float | int):
     if match:
         return float(match.group(0))
     raise ValueError(f"Could not extract number from value: {value}")
+
+
+def notna(value: Any) -> bool:
+    return pd.notna(value)
 
 
 def is_number(value: str) -> bool:
@@ -120,8 +124,8 @@ def location_is_at_end(value: str) -> bool:
     return match.end() == len(value)
 
 
-def assess_consistency(folder: Path):
-    if (folder / "results").exists():
+def assess_consistency(folder: Path, force=False):
+    if (folder / "results").exists() and not force:
         print(
             f"Results folder {(folder / 'results').absolute()} already exists. SKIPPING!"
         )
@@ -134,34 +138,38 @@ def assess_consistency(folder: Path):
                 "MinTemp": temp_rules,
                 "MaxTemp": temp_rules,
                 "PRICEEACH": [
-                    lambda value: is_number(value),
-                    lambda value: is_number(value)
+                    lambda value: notna(value) and is_number(value),
+                    lambda value: notna(value)
+                    and is_number(value)
                     or (not is_number(value) and "$" in value),
                 ],
                 "ORDERDATE": [
-                    lambda value: is_datetime(value),
+                    lambda value: notna(value) and is_datetime(value),
                     lambda value: (
-                        is_datetime(value)
+                        notna(value)
+                        and is_datetime(value)
                         and contains_expected_datetime_format(value, "%d/%m/%Y")
                     ),
                     lambda value: (
-                        is_datetime(value)
+                        notna(value)
+                        and is_datetime(value)
                         and determine_datetime_precision(value) == "day"
                     ),
                 ],
                 "Duration": [
-                    lambda value: is_duration_format(value),
-                    lambda value: is_minute_unit(value),
-                    lambda value: is_min_abbr(value),
+                    lambda value: notna(value) and is_duration_format(value),
+                    lambda value: notna(value) and is_minute_unit(value),
+                    lambda value: notna(value) and is_min_abbr(value),
                 ],
                 "Release Date": [
-                    lambda value: is_datetime_with_location(value),
-                    lambda value: location_is_at_end(value),
-                    lambda value: contains_expected_datetime_format(
+                    lambda value: notna(value) and is_datetime_with_location(value),
+                    lambda value: notna(value) and location_is_at_end(value),
+                    lambda value: notna(value)
+                    and contains_expected_datetime_format(
                         get_datetime_part(value), "%d %B %Y"  # e.g., "25 December 2020"
                     ),
-                    lambda value: determine_datetime_precision(get_datetime_part(value))
-                    == "day",
+                    lambda value: notna(value)
+                    and determine_datetime_precision(get_datetime_part(value)) == "day",
                 ],
             },
         ),
@@ -175,8 +183,8 @@ def assess_consistency(folder: Path):
     )
 
 
-def assess_completeness(folder: Path):
-    if (folder / "results").exists():
+def assess_completeness(folder: Path, force=False):
+    if (folder / "results").exists() and not force:
         print(
             f"Results folder {(folder / 'results').absolute()} already exists. SKIPPING!"
         )
@@ -197,8 +205,8 @@ def assess_completeness(folder: Path):
     )
 
 
-def assess_timeliness(folder: Path):
-    if (folder / "results").exists():
+def assess_timeliness(folder: Path, force=False):
+    if (folder / "results").exists() and not force:
         print(
             f"Results folder {(folder / 'results').absolute()} already exists. SKIPPING!"
         )
