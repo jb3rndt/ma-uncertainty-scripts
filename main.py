@@ -14,7 +14,7 @@ def main():
     for folder in latest["polluted_folders"]:
         all_result_folders.extend(
             [
-                assess_completeness(Path(folder) / "completeness"),
+                assess_completeness(Path(folder) / "completeness", force=True),
                 assess_consistency(Path(folder) / "consistency"),
                 assess_timeliness(Path(folder) / "timeliness"),
             ]
