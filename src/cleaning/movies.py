@@ -17,13 +17,7 @@ from src.assessment import (
     is_number,
     location_is_at_end,
 )
-
-PERSON_NAME_REGEX = r"[\w\-\.\&']+(\s[\w\-\.\&']+)*"
-LANGUAGE_NAME_REGEX = r"[\w\-\(\)]+(\s[\w\-\(\)]+)*"
-PERSON_LIST_REGEX = rf"^{PERSON_NAME_REGEX}(,{PERSON_NAME_REGEX})*$"
-# fmt: off
-ALLOWED_GENRES = {"Action", "History", "Fantasy", "Adult", "Biography", "Comedy", "Musical", "Romance", "Sport", "Drama", "News", "Family", "Sci-Fi", "Western", "War", "Documentary", "Film-Noir", "Mystery", "Adventure", "Music", "Thriller", "Short", "Crime", "Horror", "Animation"}
-# fmt: on
+from src.constants import ALLOWED_GENRES, ALLOWED_LANGUAGES, PERSON_LIST_REGEX
 
 CONSISTENCY_RULES = {
     "Release Date": [
@@ -40,7 +34,11 @@ CONSISTENCY_RULES = {
         lambda value: is_min_abbr(value),
     ],
     "Year": [is_number],
-    "Id": [lambda value: value.startswith("tt") and is_number(value[2:])],
+    "Id": [
+        lambda value: value.startswith("tt")
+        and is_number(value[2:])
+        and len(value) == 9
+    ],
     "Name": [lambda value: isinstance(value, str) and len(value) > 0],
     "Director": [lambda value: isinstance(value, str) and len(value) > 0],
     "Creator": [
@@ -57,10 +55,7 @@ CONSISTENCY_RULES = {
     ],
     "Language": [
         lambda value: isinstance(value, str) and len(value) > 0,
-        lambda value: re.match(
-            rf"^{LANGUAGE_NAME_REGEX}(,{LANGUAGE_NAME_REGEX})*$", value
-        )
-        is not None,
+        lambda value: all(lang in ALLOWED_LANGUAGES for lang in value.split(",")),
     ],
     "Country": [
         lambda value: isinstance(value, str) and len(value) > 0,
@@ -92,6 +87,8 @@ LANGUAGE_PATCHES = {
 def clean_movies(original: pd.DataFrame) -> pd.DataFrame:
     # Drop null values
     cleaned = original.drop(columns=["Filming Locations"]).dropna()
+
+    cleaned["RatingCount"] = cleaned["RatingCount"].astype(int)
 
     # Solve consistency violations
     with open("patches_selected.json", "r") as f:

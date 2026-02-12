@@ -44,15 +44,8 @@ def execute_run(
     metrics: List[str],
     metric_configs: List[str | None | MetricConfig],
     datasets: List[DSLiteral] = datasets,
-) -> Path:
+) -> Path | None:
     start_time = datetime.datetime.now()
-
-    results_folder.mkdir(parents=True, exist_ok=True)
-    orchestrator = DQOrchestrator(
-        writer_config_path=materialize(
-            {"writer_name": "csv", "path": str(results_folder / "dq_results.csv")}
-        )
-    )
 
     data_paths = [
         file
@@ -60,6 +53,19 @@ def execute_run(
         if not file.name.endswith(".mask.csv")
         and any(dataset in file.name for dataset in datasets)
     ]
+
+    if not data_paths:
+        print(
+            f"No data files found in {polluted_folder} for datasets {datasets}. Skipping."
+        )
+        return None
+
+    results_folder.mkdir(parents=True, exist_ok=True)
+    orchestrator = DQOrchestrator(
+        writer_config_path=materialize(
+            {"writer_name": "csv", "path": str(results_folder / "dq_results.csv")}
+        )
+    )
 
     orchestrator.load(
         data_loader_configs=[

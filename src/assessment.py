@@ -4,15 +4,15 @@ from typing import Any, List
 
 import pandas as pd
 
-from metis.metric.completeness.completeness_nullAndDMVRate import (
-    completeness_nullAndDMVRate,
+from metis.metric.completeness.completeness_nullAndDMVRatio import (
+    completeness_nullAndDMVRatio,
 )
-from metis.metric.completeness.completeness_nullAndDMVRate_config import (
-    completeness_nullAndDMVRate_config,
+from metis.metric.completeness.completeness_nullAndDMVRatio_config import (
+    completeness_nullAndDMVRatio_config,
 )
-from metis.metric.completeness.completeness_nullRate import completeness_nullRate
-from metis.metric.completeness.completeness_nullRate_config import (
-    completeness_nullRate_config,
+from metis.metric.completeness.completeness_nullRatio import completeness_nullRatio
+from metis.metric.completeness.completeness_nullRatio_config import (
+    completeness_nullRatio_config,
 )
 from metis.metric.config import MetricConfig
 from metis.metric.consistency.consistency_ruleBasedPipino import (
@@ -26,7 +26,7 @@ from metis.metric.timeliness.timeliness_heinrich_config import (
     timeliness_heinrich_config,
 )
 from metis.utils.datetime.datetime_precision import determine_datetime_precision
-from src.constants import OL_COLUMN_CHANGE_RATES
+from src.constants import ALLOWED_GENRES, OL_COLUMN_CHANGE_RATES, PERSON_LIST_REGEX
 from src.utils import execute_run
 
 NUMBER_REGEX = re.compile(r"^\-?\d+(\.\d+)?")
@@ -131,6 +131,14 @@ def assess_consistency(folder: Path, force=False):
         )
         return folder / "results"
 
+    comma_delimited_checks = [
+        lambda value: value.strip() == value,
+        lambda value: re.match(PERSON_LIST_REGEX, value.strip()) is not None,
+        lambda value: all(
+            [(word or "x")[0].isupper() for word in value.strip().split(" ")]
+        ),
+    ]
+
     metrics = [consistency_ruleBasedPipino.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         consistency_ruleBasedPipino_config(
@@ -156,20 +164,32 @@ def assess_consistency(folder: Path, force=False):
                         and determine_datetime_precision(value) == "day"
                     ),
                 ],
+                "Id": [
+                    lambda value: str(value).startswith("tt"),
+                    lambda value: len(str(value)) == 9,
+                    lambda value: is_number(str(value)[-7:]),
+                ],
+                "Actors": comma_delimited_checks,
+                "Cast": comma_delimited_checks,
                 "Duration": [
-                    lambda value: notna(value) and is_duration_format(value),
-                    lambda value: notna(value) and is_minute_unit(value),
-                    lambda value: notna(value) and is_min_abbr(value),
+                    lambda value: value.strip() == value,
+                    lambda value: is_duration_format(value.strip()) and is_minute_unit(value.strip()),
+                    lambda value: is_duration_format(value.strip()) and is_min_abbr(value.strip()),
                 ],
                 "Release Date": [
-                    lambda value: notna(value) and is_datetime_with_location(value),
-                    lambda value: notna(value) and location_is_at_end(value),
-                    lambda value: notna(value)
-                    and contains_expected_datetime_format(
+                    lambda value: is_datetime_with_location(value),
+                    lambda value: location_is_at_end(value),
+                    lambda value: contains_expected_datetime_format(
                         get_datetime_part(value), "%d %B %Y"  # e.g., "25 December 2020"
                     ),
-                    lambda value: notna(value)
-                    and determine_datetime_precision(get_datetime_part(value)) == "day",
+                    lambda value: determine_datetime_precision(get_datetime_part(value))
+                    == "day",
+                ],
+                "Genre": [
+                    *comma_delimited_checks,
+                    lambda value: all(
+                        genre in ALLOWED_GENRES for genre in value.split(",")
+                    ),
                 ],
             },
         ),
@@ -193,12 +213,15 @@ def assess_completeness(folder: Path, force=False):
     return execute_run(
         results_folder=folder / "results",
         polluted_folder=folder,
-        metrics=[completeness_nullAndDMVRate.__name__, completeness_nullRate.__name__],
+        metrics=[
+            completeness_nullAndDMVRatio.__name__,
+            completeness_nullRatio.__name__,
+        ],
         metric_configs=[
-            completeness_nullAndDMVRate_config(
+            completeness_nullAndDMVRatio_config(
                 aggregation_axis="columns", aggregate_all=False
             ),
-            completeness_nullRate_config(
+            completeness_nullRatio_config(
                 aggregation_axis="columns", aggregate_all=False
             ),
         ],
@@ -270,6 +293,10 @@ def assess_timeliness(folder: Path, force=False):
         metric_configs=metric_configs,
         datasets=["open_library"],
     )
+
+    if not results_folder_one or not results_folder_two:
+        print("One of the assessments did not produce results. Skipping combination.")
+        return results_folder_one or results_folder_two
 
     df_one = pd.read_csv(results_folder_one / "dq_results.csv")
     df_two = pd.read_csv(results_folder_two / "dq_results.csv")
