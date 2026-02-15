@@ -15,12 +15,14 @@ from src.assessment import (
     is_min_abbr,
     is_minute_unit,
     is_number,
+    is_unpadded_nonempty_str,
     location_is_at_end,
 )
 from src.constants import ALLOWED_GENRES, ALLOWED_LANGUAGES, PERSON_LIST_REGEX
 
 CONSISTENCY_RULES = {
     "Release Date": [
+        is_unpadded_nonempty_str,
         lambda value: is_datetime_with_location(value),
         lambda value: location_is_at_end(value),
         lambda value: contains_expected_datetime_format(
@@ -29,52 +31,57 @@ CONSISTENCY_RULES = {
         lambda value: determine_datetime_precision(get_datetime_part(value)) == "day",
     ],
     "Duration": [
+        is_unpadded_nonempty_str,
         lambda value: is_duration_format(value),
         lambda value: is_minute_unit(value),
         lambda value: is_min_abbr(value),
     ],
     "Year": [is_number],
     "Id": [
+        is_unpadded_nonempty_str,
         lambda value: value.startswith("tt")
         and is_number(value[2:])
-        and len(value) == 9
+        and len(value) == 9,
     ],
-    "Name": [lambda value: isinstance(value, str) and len(value) > 0],
-    "Director": [lambda value: isinstance(value, str) and len(value) > 0],
+    "Name": [is_unpadded_nonempty_str],
+    "Director": [is_unpadded_nonempty_str],
     "Creator": [
-        lambda value: isinstance(value, str) and len(value) > 0,
+        is_unpadded_nonempty_str,
         lambda value: re.match(PERSON_LIST_REGEX, value) is not None,
+        lambda value: any((word or "x")[0].isupper() for word in value.strip().split(" ")),
     ],
     "Actors": [
-        lambda value: isinstance(value, str) and len(value) > 0,
+        is_unpadded_nonempty_str,
         lambda value: re.match(PERSON_LIST_REGEX, value) is not None,
+        lambda value: any((word or "x")[0].isupper() for word in value.strip().split(" ")),
     ],
     "Cast": [
-        lambda value: isinstance(value, str) and len(value) > 0,
+        is_unpadded_nonempty_str,
         lambda value: re.match(PERSON_LIST_REGEX, value) is not None,
+        lambda value: any((word or "x")[0].isupper() for word in value.strip().split(" ")),
     ],
     "Language": [
-        lambda value: isinstance(value, str) and len(value) > 0,
+        is_unpadded_nonempty_str,
         lambda value: all(lang in ALLOWED_LANGUAGES for lang in value.split(",")),
     ],
     "Country": [
-        lambda value: isinstance(value, str) and len(value) > 0,
+        is_unpadded_nonempty_str,
         lambda value: re.match(r"^[A-Za-z\s]+(,[A-Za-z\s]+)*$", value) is not None,
     ],
     "RatingValue": [is_number],
     "RatingCount": [is_number],
     "ReviewCount": [
-        lambda value: isinstance(value, str) and len(value) > 0,
+        is_unpadded_nonempty_str,
         lambda value: re.match(
             r"^((\d[\d,]*\s(user,\d[\d,]*\scritic|user))|(\d[\d,]*\scritic)?)$", value
         )
         is not None,
     ],  # e.g. 414 user,177 critic
     "Genre": [
-        lambda value: isinstance(value, str) and len(value) > 0,
+        is_unpadded_nonempty_str,
         lambda value: all(genre in ALLOWED_GENRES for genre in value.split(",")),
     ],
-    "Description": [lambda value: isinstance(value, str) and len(value) > 0],
+    "Description": [is_unpadded_nonempty_str],
 }
 
 LANGUAGE_PATCHES = {

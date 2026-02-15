@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Callable, List
 
 import pandas as pd
 
@@ -51,6 +51,10 @@ def is_number(value: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+def is_unpadded_nonempty_str(value: Any) -> bool:
+    return isinstance(value, str) and value.strip() == value and len(value) > 0
 
 
 def is_datetime(value: str) -> bool:
@@ -125,18 +129,18 @@ def location_is_at_end(value: str) -> bool:
 
 
 def assess_consistency(folder: Path, force=False):
-    if (folder / "results").exists() and not force:
+    if (folder / "results" / "dq_results.csv").exists() and not force:
         print(
-            f"Results folder {(folder / 'results').absolute()} already exists. SKIPPING!"
+            f"Results file {(folder / 'results' / 'dq_results.csv').absolute()} already exists. Skipping."
         )
         return folder / "results"
 
-    comma_delimited_checks = [
-        lambda value: value.strip() == value,
-        lambda value: re.match(PERSON_LIST_REGEX, value.strip()) is not None,
-        lambda value: all(
-            [(word or "x")[0].isupper() for word in value.strip().split(" ")]
-        ),
+    comma_delimited_checks: List[Callable[[Any], bool]] = [
+        lambda value: notna(value) and value.strip() == value,
+        lambda value: notna(value)
+        and re.match(PERSON_LIST_REGEX, value.strip()) is not None,
+        lambda value: notna(value)
+        and any((word or "x")[0].isupper() for word in value.strip().split(" ")),
     ]
 
     metrics = [consistency_ruleBasedPipino.__name__]
@@ -172,24 +176,28 @@ def assess_consistency(folder: Path, force=False):
                 "Actors": comma_delimited_checks,
                 "Cast": comma_delimited_checks,
                 "Duration": [
-                    lambda value: value.strip() == value,
-                    lambda value: is_duration_format(value.strip()) and is_minute_unit(value.strip()),
-                    lambda value: is_duration_format(value.strip()) and is_min_abbr(value.strip()),
+                    lambda value: notna(value) and value.strip() == value,
+                    lambda value: notna(value)
+                    and is_duration_format(value.strip())
+                    and is_minute_unit(value.strip()),
+                    lambda value: notna(value)
+                    and is_duration_format(value.strip())
+                    and is_min_abbr(value.strip()),
                 ],
                 "Release Date": [
-                    lambda value: is_datetime_with_location(value),
-                    lambda value: location_is_at_end(value),
-                    lambda value: contains_expected_datetime_format(
+                    lambda value: notna(value) and is_datetime_with_location(value),
+                    lambda value: notna(value) and location_is_at_end(value),
+                    lambda value: notna(value)
+                    and contains_expected_datetime_format(
                         get_datetime_part(value), "%d %B %Y"  # e.g., "25 December 2020"
                     ),
-                    lambda value: determine_datetime_precision(get_datetime_part(value))
-                    == "day",
+                    lambda value: notna(value)
+                    and determine_datetime_precision(get_datetime_part(value)) == "day",
                 ],
                 "Genre": [
                     *comma_delimited_checks,
-                    lambda value: all(
-                        genre in ALLOWED_GENRES for genre in value.split(",")
-                    ),
+                    lambda value: notna(value)
+                    and all(genre in ALLOWED_GENRES for genre in value.split(",")),
                 ],
             },
         ),

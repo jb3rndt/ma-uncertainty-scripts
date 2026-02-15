@@ -8,6 +8,7 @@ import pandas as pd
 
 from metis.dq_orchestrator import DQOrchestrator
 from metis.metric.config import MetricConfig
+from src.constants import CLEANED_DATA_PATH, ORIGINAL_DATA_PATH
 
 DSLiteral = Literal["weather", "auto_sales", "movies", "open_library"]
 datasets: List[DSLiteral] = ["weather", "auto_sales", "movies", "open_library"]
@@ -131,7 +132,7 @@ def grouped_results_and_certainties(
                 data["DQexplanation"]
                 .apply(
                     lambda x: (
-                        json.loads(str(x).replace("'", '"'))["certainty"]
+                        json.loads(str(x).replace("'", '"')).get("certainty", 1.0)
                         if x and not pd.isna(x) and len(x) > 0
                         else 1.0
                     )
@@ -140,3 +141,13 @@ def grouped_results_and_certainties(
             )
 
         yield dataset, metric, dq_results, dq_certainties
+
+
+def get_necessary_folders():
+    with open(
+        "/Users/jberndt/Documents/Masterarbeit/data-pollution/.latest_pollutions.json",
+        "r",
+    ) as f:
+        polluted_folders = json.load(f)
+
+    return polluted_folders["polluted_folders"] + [ORIGINAL_DATA_PATH, CLEANED_DATA_PATH]

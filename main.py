@@ -1,22 +1,19 @@
-import json
 from pathlib import Path
 from typing import List
 
 from src.assessment import assess_completeness, assess_consistency, assess_timeliness
 from src.evaluation import evaluate_run
+from src.utils import get_necessary_folders
 
 
 def main():
-    with open("../data-pollution/.latest_pollutions.json", "r") as f:
-        latest = json.load(f)
-
     all_result_folders: List[Path | None] = []
 
-    for folder in latest["polluted_folders"]:
+    for folder in get_necessary_folders():
         all_result_folders.extend(
             [
                 assess_completeness(Path(folder) / "completeness"),
-                assess_consistency(Path(folder) / "consistency", True),
+                assess_consistency(Path(folder) / "consistency"),
                 assess_timeliness(Path(folder) / "timeliness"),
             ]
         )

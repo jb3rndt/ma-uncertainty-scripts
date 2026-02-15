@@ -1,3 +1,8 @@
+from pathlib import Path
+
+ORIGINAL_DATA_PATH = Path("../data-pollution/data/original").absolute()
+CLEANED_DATA_PATH = Path("../data-pollution/data/cleaned").absolute()
+
 PERSON_NAME_REGEX = r"[\w\-\.\&']+(\s[\w\-\.\&']+)*"
 PERSON_LIST_REGEX = rf"^{PERSON_NAME_REGEX}(,{PERSON_NAME_REGEX})*$"
 # fmt: off

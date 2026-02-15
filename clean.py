@@ -1,11 +1,7 @@
-from pathlib import Path
-
 import pandas as pd
 
 from src.cleaning.movies import clean_movies
-
-ORIGINAL_DATA_PATH = Path("../data-pollution/data/original")
-CLEANED_DATA_PATH = Path("../data-pollution/data/cleaned")
+from src.constants import CLEANED_DATA_PATH, ORIGINAL_DATA_PATH
 
 
 def main():
