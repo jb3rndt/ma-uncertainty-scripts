@@ -106,7 +106,7 @@ def parse_columnNames(columnNames_str: str) -> str:
 
 
 def format_columnName(columnName: str) -> str:
-    return "full_tuple" if "," in columnName else columnName
+    return "Full Tuple" if "," in columnName else columnName
 
 
 def grouped_results_and_certainties(

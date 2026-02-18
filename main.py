@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List
 
 from src.assessment import assess_completeness, assess_consistency, assess_timeliness
-from src.evaluation import evaluate_run
+from src.evaluation.evaluation import evaluate_run
 from src.utils import get_necessary_folders
 
 
