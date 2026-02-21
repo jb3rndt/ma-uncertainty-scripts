@@ -47,6 +47,7 @@ def kl_divergence(p: np.ndarray, q: np.ndarray, dx: float) -> float:
     q += eps
     return np.sum(p * np.log(p / q)) * dx
 
+
 def js_divergence(p, q, dx):
     """Compute Jensen-Shannon divergence between two distributions."""
     m = 0.5 * (p + q)
@@ -56,13 +57,13 @@ def js_divergence(p, q, dx):
 def evaluate_kl_divergence(
     dq_results: pd.DataFrame, aggregated_values: pd.Series
 ) -> dict:
-    results = {"kl_gaussian": {}, "kl_laplace": {}, "kl_exponential": {}}
+    results = {}
     for col in dq_results.columns:
         agg: float = aggregated_values[col]
-        data = dq_results[col]
+        data = np.array(dq_results[col])
 
         # ----- 1. Estimate empirical distribution via KDE -----
-        if data.nunique() == 1:
+        if np.var(data) == 0:
             data[0] += 1e-12  # Add small noise to avoid singularity in KDE
         kde = gaussian_kde(data)
 
@@ -79,6 +80,7 @@ def evaluate_kl_divergence(
         q_gauss /= np.sum(q_gauss) * dx
 
         kl_gauss = kl_divergence(p, q_gauss, dx)
+        js_gauss = js_divergence(p, q_gauss, dx)
 
         # ----- 3. Laplace model -----
         b = np.mean(np.abs(data - agg))
@@ -86,6 +88,7 @@ def evaluate_kl_divergence(
         q_laplace /= np.sum(q_laplace) * dx
 
         kl_laplace = kl_divergence(p, q_laplace, dx)
+        js_laplace = js_divergence(p, q_laplace, dx)
 
         # ----- 4. Exponential model -----
         rate = 1 / (agg + 1e-12)  # Avoid division by zero
@@ -93,10 +96,16 @@ def evaluate_kl_divergence(
         q_exp /= np.sum(q_exp) * dx
 
         kl_exp = kl_divergence(p, q_exp, dx)
+        js_exp = js_divergence(p, q_exp, dx)
 
-        results["kl_gaussian"][col] = kl_gauss
-        results["kl_laplace"][col] = kl_laplace
-        results["kl_exponential"][col] = kl_exp
+        results[col] = {
+            "kl_gaussian": kl_gauss,
+            "kl_laplace": kl_laplace,
+            "kl_exponential": kl_exp,
+            "js_gaussian": js_gauss,
+            "js_laplace": js_laplace,
+            "js_exponential": js_exp,
+        }
 
     return results
 

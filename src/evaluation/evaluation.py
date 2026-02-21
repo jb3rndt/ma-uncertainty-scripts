@@ -127,15 +127,17 @@ def evaluate_run(
             }
         ).to_dict()
 
+        # sklearn requires binary labels for precision-recall curve
+        binary_is_polluted_mask = is_clean_mask < 1
         evaluations[metric][dataset]["pr_auc_per_column"] = pr_auc_per_column(
-            1 - is_clean_mask, 1 - dq_results
+            binary_is_polluted_mask, 1 - dq_results
+        )
+        evaluations[metric][dataset]["pr_auc_per_column_weighted"] = pr_auc_per_column(
+            binary_is_polluted_mask, 1 - dq_results * dq_certainties
         )
 
-        evaluations[metric][dataset]["pr_auc_per_column_weighted"] = pr_auc_per_column(
-            1 - is_clean_mask, 1 - dq_results * dq_certainties
-        )
-        evaluations[metric][dataset]["aggregation_evaluation"] = evaluate_aggregation_methods(
-            dq_results, dq_certainties, 1 - is_clean_mask
+        evaluations[metric][dataset]["aggregation_evaluation"] = (
+            evaluate_aggregation_methods(dq_results, dq_certainties, 1 - is_clean_mask)
         )
 
         # print(evaluate_aggregation_methods(dq_results, dq_certainties, mask))

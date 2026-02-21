@@ -38,7 +38,7 @@ def extract_number(value: str | float | int):
     match = NUMBER_REGEX.match(value)
     if match:
         return float(match.group(0))
-    raise ValueError(f"Could not extract number from value: {value}")
+    return None
 
 
 def notna(value: Any) -> bool:
@@ -73,10 +73,19 @@ def contains_expected_datetime_format(value: str, format: str) -> bool:
         return False
 
 
+def try_is_between(
+    value: str | float | int, min_value: float, max_value: float
+) -> bool:
+    number = extract_number(value)
+    if number is None:
+        return False
+    return min_value <= number <= max_value
+
+
 temp_rules = [
-    lambda value: (extract_number(value) >= -10 and extract_number(value) <= 50),
-    lambda value: str(extract_number(value))[::-1].find(".") == 1,
-    lambda value: is_number(value),
+    lambda value: notna(value) and try_is_between(value, -10, 50),
+    lambda value: notna(value) and str(extract_number(value))[::-1].find(".") == 1,
+    lambda value: notna(value) and is_number(value),
 ]
 
 
