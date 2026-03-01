@@ -4,6 +4,7 @@ from hashlib import sha1
 from pathlib import Path
 from typing import Generator, List, Literal, Tuple, cast
 
+import numpy as np
 import pandas as pd
 
 from metis.dq_orchestrator import DQOrchestrator
@@ -46,58 +47,66 @@ def execute_run(
     metric_configs: List[str | None | MetricConfig],
     datasets: List[DSLiteral] = datasets,
 ) -> Path | None:
-    start_time = datetime.datetime.now()
+    try:
+        start_time = datetime.datetime.now()
 
-    data_paths = [
-        file
-        for file in polluted_folder.glob("*.csv")
-        if not file.name.endswith(".mask.csv")
-        and any(dataset in file.name for dataset in datasets)
-    ]
-
-    if not data_paths:
-        print(
-            f"No data files found in {polluted_folder} for datasets {datasets}. Skipping."
-        )
-        return None
-
-    results_folder.mkdir(parents=True, exist_ok=True)
-    orchestrator = DQOrchestrator(
-        writer_config_path=materialize(
-            {"writer_name": "csv", "path": str(results_folder / "dq_results.csv")}
-        )
-    )
-
-    orchestrator.load(
-        data_loader_configs=[
-            materialize(
-                {
-                    "loader": "CSV",
-                    "name": path.stem,
-                    "file_name": str(path),
-                },
-                str(results_folder / f"{path.stem}.loader_config.json"),
-            )
-            for path in data_paths
+        data_paths = [
+            file
+            for file in polluted_folder.glob("*.csv")
+            if not file.name.endswith(".mask.csv")
+            and any(dataset in file.name for dataset in datasets)
         ]
-    )
 
-    orchestrator.assess(metrics=metrics, metric_configs=metric_configs)
+        if not data_paths:
+            print(
+                f"No data files found in {polluted_folder} for datasets {datasets}. Skipping."
+            )
+            return None
 
-    with open(
-        results_folder / "dq_orchestrator_config.json", "w"
-    ) as orchestrator_config_file:
-        json.dump(
-            {"metrics": metrics, "metric_configs": metric_configs},
-            orchestrator_config_file,
-            indent=4,
-            default=lambda o: o.to_json() if hasattr(o, "to_json") else str(o),
+        results_folder.mkdir(parents=True, exist_ok=True)
+        orchestrator = DQOrchestrator(
+            writer_config_path=materialize(
+                {"writer_name": "csv", "path": str(results_folder / "dq_results.csv")}
+            )
         )
 
-    end_time = datetime.datetime.now()
-    print(f"DQ run completed in {end_time - start_time}")
+        orchestrator.load(
+            data_loader_configs=[
+                materialize(
+                    {
+                        "loader": "CSV",
+                        "name": path.stem,
+                        "file_name": str(path),
+                    },
+                    str(results_folder / f"{path.stem}.loader_config.json"),
+                )
+                for path in data_paths
+            ]
+        )
 
-    return results_folder
+        orchestrator.assess(metrics=metrics, metric_configs=metric_configs)
+
+        with open(
+            results_folder / "dq_orchestrator_config.json", "w"
+        ) as orchestrator_config_file:
+            json.dump(
+                {"metrics": metrics, "metric_configs": metric_configs},
+                orchestrator_config_file,
+                indent=4,
+                default=lambda o: o.to_json() if hasattr(o, "to_json") else str(o),
+            )
+
+        end_time = datetime.datetime.now()
+        print(f"DQ run completed in {end_time - start_time}")
+
+        return results_folder
+    except Exception as e:
+        # Clear and remove results_folder to avoid confusion with incomplete results in case of errors
+        if results_folder.exists() and results_folder.is_dir():
+            for file in results_folder.glob("*"):
+                file.unlink()
+            results_folder.rmdir()
+        raise e
 
 
 def parse_columnNames(columnNames_str: str) -> str:
@@ -107,6 +116,16 @@ def parse_columnNames(columnNames_str: str) -> str:
 
 def format_columnName(columnName: str) -> str:
     return "Full Tuple" if "," in columnName else columnName
+
+
+def make_labels(polluted, cleaned, original):
+    return np.concatenate(
+        [
+            np.array([f"{x} c" for x in cleaned["pollution_rate"].round(2).unique()]),
+            np.array([f"{x} o" for x in original["pollution_rate"].round(2).unique()]),
+            np.array([f"{x} p" for x in polluted["pollution_rate"].round(2).unique()]),
+        ]
+    )
 
 
 def grouped_results_and_certainties(
@@ -150,4 +169,7 @@ def get_necessary_folders():
     ) as f:
         polluted_folders = json.load(f)
 
-    return polluted_folders["polluted_folders"] + [ORIGINAL_DATA_PATH, CLEANED_DATA_PATH]
+    return polluted_folders["polluted_folders"] + [
+        ORIGINAL_DATA_PATH,
+        CLEANED_DATA_PATH,
+    ]

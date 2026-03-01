@@ -1,5 +1,6 @@
 import json
 import warnings
+from operator import is_
 from pathlib import Path
 from typing import Callable, Dict, List, Literal, Tuple
 
@@ -8,6 +9,20 @@ from sklearn.metrics import auc, precision_recall_curve
 
 from src.evaluation.aggregation import evaluate_aggregation_methods
 from src.utils import grouped_results_and_certainties
+
+
+def is_polluted_dataset(dataset_name: str) -> bool:
+    return not any(keyword in dataset_name for keyword in ["original", "cleaned"])
+
+
+def get_error_mechanism(mechanism_config_value: str):
+    possible = ["EAR", "ENAR", "ECAR"]
+    for mechanism in possible:
+        if mechanism in mechanism_config_value:
+            return mechanism
+    raise ValueError(
+        f"Unknown mechanism in config value {mechanism_config_value}. Expected one of {possible}"
+    )
 
 
 def mse_per_column(expected: pd.DataFrame, predicted: pd.DataFrame) -> pd.Series:
@@ -53,17 +68,19 @@ def evaluate_run(
         str,
         Dict[Literal["data", "mask"], pd.DataFrame],
     ] = {}
+    pollution_configs: Dict[str, Dict] = {}
 
     for path, dataset in data_configs:
         with open(path, "r") as f:
             data_config = json.load(f)
         data = pd.read_csv(data_config["file_name"])
         mask_file = data_config["file_name"].replace(".csv", ".mask.csv")
-        if not Path(mask_file).exists():
-            print(f"No mask found for {dataset}")
-            is_polluted_mask = pd.DataFrame(False, data.index, data.columns)
-        else:
+        pollution_config = data_config["file_name"].replace(".csv", ".config.json")
+        if is_polluted_dataset(dataset):
             is_polluted_mask = pd.read_csv(mask_file)
+            pollution_configs[dataset] = json.load(open(pollution_config, "r"))
+        else:
+            is_polluted_mask = pd.DataFrame(False, data.index, data.columns)
         reference_per_data_config[dataset] = {
             "data": data,
             "mask": is_polluted_mask,
@@ -77,8 +94,8 @@ def evaluate_run(
         dq_results_flat
     ):
         data = reference_per_data_config[dataset]["data"]
+        pollution_config = pollution_configs.get(dataset, None)
         if any("," in col for col in dq_results.columns.to_list()):
-            print("Evaluating tuple base aggregation")
             is_clean_mask = ~reference_per_data_config[dataset]["mask"]
             is_clean_mask = pd.DataFrame(
                 is_clean_mask.mean(axis=1), columns=dq_results.columns
@@ -102,6 +119,19 @@ def evaluate_run(
         evaluations[metric][dataset]["pollution_rates"] = (
             1 - is_clean_mask.mean()
         ).to_dict()
+        evaluations[metric][dataset]["pollution_mechanism"] = (
+            {
+                col: list(
+                    {
+                        get_error_mechanism(config["error_mechanism"])
+                        for config in configs
+                    }
+                )
+                for col, configs in pollution_config["columns"].items()
+            }
+            if pollution_config
+            else {}
+        )
         evaluations[metric][dataset]["dq_results_stats"] = {
             "describe": dq_results.describe().to_dict(),
             "null_rates": dq_results.isna().mean().to_dict(),
@@ -135,6 +165,28 @@ def evaluate_run(
         evaluations[metric][dataset]["pr_auc_per_column_weighted"] = pr_auc_per_column(
             binary_is_polluted_mask, 1 - dq_results * dq_certainties
         )
+
+        # TP, FP, TN, FN rates per column
+        FP = ((is_clean_mask == 1) & (dq_results < 1)).sum()
+        FN = ((is_clean_mask == 0) & (dq_results == 1)).sum()
+        TP = ((is_clean_mask == 0) & (dq_results < 1)).sum()
+        TN = ((is_clean_mask == 1) & (dq_results == 1)).sum()
+        FPW = ((is_clean_mask == 1) & (dq_results * dq_certainties < 1)).sum()
+        FNW = ((is_clean_mask == 0) & (dq_results * dq_certainties == 1)).sum()
+        TPW = ((is_clean_mask == 0) & (dq_results * dq_certainties < 1)).sum()
+        TNW = ((is_clean_mask == 1) & (dq_results * dq_certainties == 1)).sum()
+        evaluations[metric][dataset]["false_positive_rate_per_column"] = (
+            FP / (FP + TN)
+        ).to_dict()
+        evaluations[metric][dataset]["false_negative_rate_per_column"] = (
+            FN / (FN + TP)
+        ).to_dict()
+        evaluations[metric][dataset]["false_positive_rate_per_column_weighted"] = (
+            FPW / (FPW + TNW)
+        ).to_dict()
+        evaluations[metric][dataset]["false_negative_rate_per_column_weighted"] = (
+            FNW / (FNW + TPW)
+        ).to_dict()
 
         evaluations[metric][dataset]["aggregation_evaluation"] = (
             evaluate_aggregation_methods(dq_results, dq_certainties, 1 - is_clean_mask)

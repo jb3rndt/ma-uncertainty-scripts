@@ -63,7 +63,7 @@ def evaluate_kl_divergence(
         data = np.array(dq_results[col])
 
         # ----- 1. Estimate empirical distribution via KDE -----
-        if np.var(data) == 0:
+        if len(np.unique(data)) == 1:
             data[0] += 1e-12  # Add small noise to avoid singularity in KDE
         kde = gaussian_kde(data)
 
