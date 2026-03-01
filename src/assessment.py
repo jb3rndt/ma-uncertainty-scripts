@@ -53,6 +53,13 @@ def is_number(value: str) -> bool:
         return False
 
 
+def is_integer(value: str | float | int) -> bool:
+    number = extract_number(value)
+    if number is None:
+        return False
+    return number.is_integer()
+
+
 def is_unpadded_nonempty_str(value: Any) -> bool:
     return isinstance(value, str) and value.strip() == value and len(value) > 0
 
@@ -148,8 +155,9 @@ def assess_consistency(folder: Path, force=False):
         lambda value: notna(value) and value.strip() == value,
         lambda value: notna(value)
         and re.match(PERSON_LIST_REGEX, value.strip()) is not None,
+        # Detect false positives
         lambda value: notna(value)
-        and any((word or "x")[0].isupper() for word in value.strip().split(" ")),
+        and all((word or "x")[0].isupper() for word in value.strip().split(" ")),
     ]
 
     metrics = [consistency_ruleBasedPipino.__name__]
@@ -160,27 +168,20 @@ def assess_consistency(folder: Path, force=False):
                 "MaxTemp": temp_rules,
                 "PRICEEACH": [
                     lambda value: notna(value) and is_number(value),
-                    lambda value: notna(value)
-                    and is_number(value)
-                    or (not is_number(value) and "$" in value),
+                    lambda value: notna(value) and not is_integer(value),
                 ],
                 "ORDERDATE": [
-                    lambda value: notna(value) and is_datetime(value),
+                    lambda value: notna(value) and value.strip() == value,
                     lambda value: (
                         notna(value)
-                        and is_datetime(value)
-                        and contains_expected_datetime_format(value, "%d/%m/%Y")
-                    ),
-                    lambda value: (
-                        notna(value)
-                        and is_datetime(value)
-                        and determine_datetime_precision(value) == "day"
+                        and is_datetime(value.strip())
+                        and contains_expected_datetime_format(value.strip(), "%d/%m/%Y")
                     ),
                 ],
                 "Id": [
-                    lambda value: str(value).startswith("tt"),
-                    lambda value: len(str(value)) == 9,
-                    lambda value: is_number(str(value)[-7:]),
+                    lambda value: value.startswith("tt"),
+                    # lambda value: len(str(value)) == 9, trigger false negatives
+                    lambda value: is_number(value.replace("tt", "")),
                 ],
                 "Actors": comma_delimited_checks,
                 "Cast": comma_delimited_checks,
@@ -189,9 +190,10 @@ def assess_consistency(folder: Path, force=False):
                     lambda value: notna(value)
                     and is_duration_format(value.strip())
                     and is_minute_unit(value.strip()),
-                    lambda value: notna(value)
-                    and is_duration_format(value.strip())
-                    and is_min_abbr(value.strip()),
+                    # Trigger false negatives
+                    # lambda value: notna(value)
+                    # and is_duration_format(value.strip())
+                    # and is_min_abbr(value.strip()),
                 ],
                 "Release Date": [
                     lambda value: notna(value) and is_datetime_with_location(value),
@@ -200,8 +202,6 @@ def assess_consistency(folder: Path, force=False):
                     and contains_expected_datetime_format(
                         get_datetime_part(value), "%d %B %Y"  # e.g., "25 December 2020"
                     ),
-                    lambda value: notna(value)
-                    and determine_datetime_precision(get_datetime_part(value)) == "day",
                 ],
                 "Genre": [
                     *comma_delimited_checks,
@@ -235,12 +235,8 @@ def assess_completeness(folder: Path, force=False):
             completeness_nullRatio.__name__,
         ],
         metric_configs=[
-            completeness_nullAndDMVRatio_config(
-                aggregation_axis="columns", aggregate_all=False
-            ),
-            completeness_nullRatio_config(
-                aggregation_axis="columns", aggregate_all=False
-            ),
+            completeness_nullAndDMVRatio_config(),
+            completeness_nullRatio_config(),
         ],
     )
 
