@@ -23,6 +23,7 @@ from metis.metric.consistency.consistency_ruleBasedPipino_config import (
 )
 from metis.metric.timeliness.timeliness_heinrich import timeliness_heinrich
 from metis.metric.timeliness.timeliness_heinrich_config import (
+    timeliness_heinrich_column_config,
     timeliness_heinrich_config,
 )
 from metis.utils.datetime.datetime_precision import determine_datetime_precision
@@ -248,78 +249,54 @@ def assess_timeliness(folder: Path, force=False):
         )
         return folder / "results"
 
+    selected_ol_column_change_rates = sorted(
+        list(OL_COLUMN_CHANGE_RATES.items()),
+        key=lambda item: (
+            item[1]["avg_changes"] / item[1]["avg_time"]
+            if item[1]["avg_time"] is not None
+            and item[1]["avg_changes"] is not None
+            and item[0]
+            not in [
+                "last_modified",
+                "latest_revision",
+                "revision",
+                "created",
+            ]
+            else 0
+        ),
+        reverse=True,
+    )[:5]
+
     metrics = [timeliness_heinrich.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         timeliness_heinrich_config(
-            decline_rate_per_column={
-                "ADDRESSLINE1": 0.1 / 365.25,
-            },
-            ingestion_date_column="ORDERDATE",
-            to_datetime_kwargs={"dayfirst": True},
-            simulated_assessment_date="2021-05-30",  # newest entry in auto sales data: 2020-05-30T22:00:00.000Z
+            timeliness_config_per_column={
+                "ADDRESSLINE1": timeliness_heinrich_column_config(
+                    decline_rate=0.1 / 365.25,
+                    ingestion_date_column="ORDERDATE",
+                    to_datetime_kwargs={"dayfirst": True},
+                    simulated_assessment_date="2021-05-30",  # newest entry in auto sales data: 2020-05-30T22:00:00.000Z
+                ),
+                **{
+                    col: timeliness_heinrich_column_config(
+                        decline_rate=stats["avg_changes"] / stats["avg_time"],
+                        ingestion_date_column="last_modified",
+                        to_datetime_kwargs={"format": "ISO8601"},
+                        simulated_assessment_date="2026-01-01",  # newest entry in open library data: 2025-12-31T22:00:00.274823
+                        simulated_timestamp_precision="year",
+                    )
+                    for col, stats in selected_ol_column_change_rates
+                    if stats["avg_time"] is not None
+                    and stats["avg_changes"] is not None
+                },
+            }
         ),
     ]
 
-    results_folder_one = execute_run(
-        results_folder=folder / "results_AS",
-        polluted_folder=folder,
-        metrics=metrics,
-        metric_configs=metric_configs,
-        datasets=["auto_sales"],
-    )
-
-    metrics = [timeliness_heinrich.__name__]
-    metric_configs: List[str | None | MetricConfig] = [
-        timeliness_heinrich_config(
-            decline_rate_per_column={
-                col: stats["avg_changes"] / stats["avg_time"]
-                for col, stats in sorted(
-                    list(OL_COLUMN_CHANGE_RATES.items()),
-                    key=lambda item: (
-                        item[1]["avg_changes"] / item[1]["avg_time"]
-                        if item[1]["avg_time"] is not None
-                        and item[1]["avg_changes"] is not None
-                        and item[0]
-                        not in [
-                            "last_modified",
-                            "latest_revision",
-                            "revision",
-                            "created",
-                        ]
-                        else 0
-                    ),
-                    reverse=True,
-                )[:5]
-                if stats["avg_time"] is not None and stats["avg_changes"] is not None
-            },
-            ingestion_date_column="last_modified",
-            to_datetime_kwargs={"format": "ISO8601"},
-            simulated_assessment_date="2026-01-01",  # newest entry in open library data: 2025-12-31T22:00:00.274823
-            simulated_timestamp_precision="year",
-        ),
-    ]
-
-    results_folder_two = execute_run(
+    return execute_run(
         results_folder=folder / "results",
         polluted_folder=folder,
         metrics=metrics,
         metric_configs=metric_configs,
-        datasets=["open_library"],
+        datasets=["auto_sales", "open_library"],
     )
-
-    if not results_folder_one or not results_folder_two:
-        print("One of the assessments did not produce results. Skipping combination.")
-        return results_folder_one or results_folder_two
-
-    df_one = pd.read_csv(results_folder_one / "dq_results.csv")
-    df_two = pd.read_csv(results_folder_two / "dq_results.csv")
-    combined_df = pd.concat([df_one, df_two], ignore_index=True)
-    # Save everything into second folder and remove first folder
-    combined_df.to_csv(results_folder_two / "dq_results.csv", index=False)
-    for file in results_folder_one.glob("*"):
-        prefix = "one_" if (results_folder_two / file.name).exists() else ""
-        if file.name != "dq_results.csv":
-            file.rename(results_folder_two / f"{prefix}{file.name}")
-    (results_folder_one / "dq_results.csv").unlink()
-    results_folder_one.rmdir()
-    return results_folder_two

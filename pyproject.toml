@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "datasketch>=1.9.0",
     "ipykernel>=7.1.0",
     "matplotlib>=3.10.8",
     "nltk==3.9.2",

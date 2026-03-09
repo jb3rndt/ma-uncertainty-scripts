@@ -9,7 +9,8 @@ import pandas as pd
 
 from metis.dq_orchestrator import DQOrchestrator
 from metis.metric.config import MetricConfig
-from src.constants import CLEANED_DATA_PATH, ORIGINAL_DATA_PATH
+from src.constants import CLEANED_DATA_PATH, ORIGINAL_DATA_PATH, POLLUTION_RATES
+from src.evaluation.types import ColumnEvaluationResult, ColumnRawData
 
 DSLiteral = Literal["weather", "auto_sales", "movies", "open_library"]
 datasets: List[DSLiteral] = ["weather", "auto_sales", "movies", "open_library"]
@@ -118,16 +119,6 @@ def format_columnName(columnName: str) -> str:
     return "Full Tuple" if "," in columnName else columnName
 
 
-def make_labels(polluted, cleaned, original):
-    return np.concatenate(
-        [
-            np.array([f"{x} c" for x in cleaned["pollution_rate"].round(2).unique()]),
-            np.array([f"{x} o" for x in original["pollution_rate"].round(2).unique()]),
-            np.array([f"{x} p" for x in polluted["pollution_rate"].round(2).unique()]),
-        ]
-    )
-
-
 def grouped_results_and_certainties(
     flat_results: pd.DataFrame,
 ) -> Generator[Tuple[str, str, pd.DataFrame, pd.DataFrame], None, None]:
@@ -162,6 +153,29 @@ def grouped_results_and_certainties(
         yield dataset, metric, dq_results, dq_certainties
 
 
+def make_labels(df: pd.DataFrame) -> List[str]:
+    types = df["type"].unique()
+    if len(types) != 1:
+        raise ValueError(f"Expected only one type, but got {[t for t in types]}")
+    data_type = types[0]
+    if data_type == "polluted":
+        return [f"{x}" for x in df["pollution_rate"].unique()]
+    else:
+        assert (
+            len(df["pollution_rate"].unique()) == 1
+        ), "Expected exactly one pollution rate for clean/original data"
+        if data_type == "cleaned":
+            return ["clean"]
+        elif data_type == "original":
+            return ["original"]
+        else:
+            raise ValueError(f"Unknown type {data_type}")
+
+
+def normalize_pollution_rate(rate: float) -> float:
+    return POLLUTION_RATES[np.argmin(np.abs(np.array(POLLUTION_RATES) - rate))]
+
+
 def get_necessary_folders():
     with open(
         "/Users/jberndt/Documents/Masterarbeit/data-pollution/.latest_pollutions.json",
@@ -173,3 +187,97 @@ def get_necessary_folders():
         ORIGINAL_DATA_PATH,
         CLEANED_DATA_PATH,
     ]
+
+
+def load_raw_results():
+    return {
+        (dim, Path(folder).name): json.load(
+            (Path(folder) / dim / "results" / "raw_results.json").open()
+        )
+        for folder in get_necessary_folders()
+        for dim in ["timeliness", "completeness", "consistency"]
+        if (Path(folder) / dim / "results" / "raw_results.json").exists()
+    }
+
+
+def flatten_raw_results(raw_results: dict) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "dimension": dim,
+                "folder": folder,
+                "metric": metric,
+                "dataset": dataset.split(".")[0],
+                "type": dataset.split(".")[1],
+                "column": format_columnName(column),
+                "pollution_rate": normalize_pollution_rate(
+                    results[column]["pollution_ratio"]
+                ),
+                "original_pollution_rate": results[column]["pollution_ratio"],
+                "pollution_mechanism": results[column]["pollution_mechanism"],
+                "result": ColumnRawData(**results[column]),
+            }
+            for (dim, folder), evaluation in raw_results.items()
+            for metric, datasets in evaluation.items()
+            for dataset, results in datasets.items()
+            for column in results.keys()
+        ]
+    )
+
+
+def load_evaluations():
+    return {
+        (dim, Path(folder).name): json.load(
+            (Path(folder) / dim / "results" / "evaluations.json").open()
+        )
+        for folder in get_necessary_folders()
+        for dim in ["timeliness", "completeness", "consistency"]
+        if (Path(folder) / dim / "results" / "evaluations.json").exists()
+    }
+
+
+def flatten_evaluations(evaluations: dict) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "dimension": dim,
+                "folder": folder,
+                "metric": metric,
+                "dataset": dataset.split(".")[0],
+                "type": dataset.split(".")[1],
+                "column": format_columnName(column),
+                "pollution_rate": normalize_pollution_rate(
+                    results[column]["pollution_ratio"]
+                ),
+                "original_pollution_rate": results[column]["pollution_ratio"],
+                "pollution_mechanism": results[column]["pollution_mechanism"],
+                "result": ColumnEvaluationResult(**results[column]),
+            }
+            for (dim, folder), evaluation in evaluations.items()
+            for metric, datasets in evaluation.items()
+            for dataset, results in datasets.items()
+            for column in results.keys()
+        ]
+    )
+
+
+def res(df: pd.DataFrame) -> List[ColumnEvaluationResult]:
+    return df["result"].tolist()
+
+
+def get_raw_results() -> pd.DataFrame:
+    key = "df_raw"
+    if key not in globals():
+        print("Loading raw results...")
+        globals()[key] = flatten_raw_results(load_raw_results())
+
+    return globals()[key]
+
+
+def get_evaluations() -> pd.DataFrame:
+    key = "df_eval"
+    if key not in globals():
+        print("Loading evaluations...")
+        globals()[key] = flatten_evaluations(load_evaluations())
+
+    return globals()[key]
