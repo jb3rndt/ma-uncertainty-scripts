@@ -437,3 +437,16 @@ OL_COLUMN_CHANGE_RATES = {
         "null_rate": 20.85877016971876,
     },
 }
+
+# source_records, works, covers, oclc_numbers, authors
+TOP_OL_COLUMNS = sorted(
+    {
+        key: {"avg_time": value["avg_time"], "avg_changes": value["avg_changes"]}
+        for key, value in OL_COLUMN_CHANGE_RATES.items()
+        if value["avg_time"] is not None
+        and value["avg_changes"] is not None
+        and key not in ["last_modified", "latest_revision", "revision", "created"]
+    }.items(),
+    key=lambda item: (item[1]["avg_changes"] / item[1]["avg_time"]),
+    reverse=True,
+)[:5]

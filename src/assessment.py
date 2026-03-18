@@ -26,8 +26,7 @@ from metis.metric.timeliness.timeliness_heinrich_config import (
     timeliness_heinrich_column_config,
     timeliness_heinrich_config,
 )
-from metis.utils.datetime.datetime_precision import determine_datetime_precision
-from src.constants import ALLOWED_GENRES, OL_COLUMN_CHANGE_RATES, PERSON_LIST_REGEX
+from src.constants import ALLOWED_GENRES, PERSON_LIST_REGEX, TOP_OL_COLUMNS
 from src.utils import execute_run
 
 NUMBER_REGEX = re.compile(r"^\-?\d+(\.\d+)?")
@@ -249,24 +248,6 @@ def assess_timeliness(folder: Path, force=False):
         )
         return folder / "results"
 
-    selected_ol_column_change_rates = sorted(
-        list(OL_COLUMN_CHANGE_RATES.items()),
-        key=lambda item: (
-            item[1]["avg_changes"] / item[1]["avg_time"]
-            if item[1]["avg_time"] is not None
-            and item[1]["avg_changes"] is not None
-            and item[0]
-            not in [
-                "last_modified",
-                "latest_revision",
-                "revision",
-                "created",
-            ]
-            else 0
-        ),
-        reverse=True,
-    )[:5]
-
     metrics = [timeliness_heinrich.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         timeliness_heinrich_config(
@@ -276,6 +257,7 @@ def assess_timeliness(folder: Path, force=False):
                     ingestion_date_column="ORDERDATE",
                     to_datetime_kwargs={"dayfirst": True},
                     simulated_assessment_date="2021-05-30",  # newest entry in auto sales data: 2020-05-30T22:00:00.000Z
+                    simulated_timestamp_precision="year",
                 ),
                 **{
                     col: timeliness_heinrich_column_config(
@@ -285,9 +267,7 @@ def assess_timeliness(folder: Path, force=False):
                         simulated_assessment_date="2026-01-01",  # newest entry in open library data: 2025-12-31T22:00:00.274823
                         simulated_timestamp_precision="year",
                     )
-                    for col, stats in selected_ol_column_change_rates
-                    if stats["avg_time"] is not None
-                    and stats["avg_changes"] is not None
+                    for col, stats in TOP_OL_COLUMNS
                 },
             }
         ),
