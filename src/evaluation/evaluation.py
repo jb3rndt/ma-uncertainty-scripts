@@ -9,7 +9,7 @@ from sklearn.metrics import auc, precision_recall_curve
 
 from src.evaluation.aggregation import evaluate_aggregation_methods
 from src.evaluation.types import ColumnEvaluationResult, ColumnRawData
-from src.utils import grouped_results_and_certainties
+from src.utils import first_or_none, grouped_results_and_certainties
 
 
 def is_polluted_dataset(dataset_name: str) -> bool:
@@ -127,16 +127,25 @@ def evaluate_run(
             col: dataclasses.asdict(
                 ColumnRawData(
                     pollution_ratio=1 - is_clean_mask[col].mean(),
-                    pollution_mechanism=next(
-                        iter(
-                            {
-                                get_error_mechanism(config["error_mechanism"])
+                    pollution_mechanism=first_or_none(
+                        {
+                            get_error_mechanism(
+                                config["error_mechanism"]["error_mechanism"]
+                            )
+                            for config in (pollution_config or {})
+                            .get("columns", {})
+                            .get(col, [])
+                        }
+                    ),
+                    condition_to_column=first_or_none(
+                        {
+                            config["error_mechanism"].get(
+                                    "condition_to_column", None
+                                )
                                 for config in (pollution_config or {})
                                 .get("columns", {})
                                 .get(col, [])
                             }
-                        ),
-                        None,
                     ),
                     data=data[col].to_list(),
                     dq_result=dq_results[col].to_list(),
@@ -174,16 +183,23 @@ def evaluate_run(
             evaluations[metric][dataset][col] = dataclasses.asdict(
                 ColumnEvaluationResult(
                     pollution_ratio=1 - is_clean_mask[col].mean(),
-                    pollution_mechanism=next(
-                        iter(
-                            {
-                                get_error_mechanism(config["error_mechanism"])
-                                for config in (pollution_config or {})
-                                .get("columns", {})
-                                .get(col, [])
-                            }
-                        ),
-                        None,
+                    pollution_mechanism=first_or_none(
+                        {
+                            get_error_mechanism(
+                                config["error_mechanism"]["error_mechanism"]
+                            )
+                            for config in (pollution_config or {})
+                            .get("columns", {})
+                            .get(col, [])
+                        }
+                    ),
+                    condition_to_column=first_or_none(
+                        {
+                            config["error_mechanism"].get("condition_to_column", None)
+                            for config in (pollution_config or {})
+                            .get("columns", {})
+                            .get(col, [])
+                        }
                     ),
                     dq_results_null_ratio=dq_results[col].isna().mean(),
                     certainty_null_ratio=dq_certainties[col].isna().mean(),

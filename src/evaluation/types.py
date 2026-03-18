@@ -6,6 +6,7 @@ from typing import Dict, List
 class ColumnRawData:
     pollution_ratio: float
     pollution_mechanism: str | None
+    condition_to_column: str | None
     data: List
     dq_result: List
     certainty: List
@@ -16,6 +17,7 @@ class ColumnRawData:
 class ColumnEvaluationResult:
     pollution_ratio: float
     pollution_mechanism: str | None
+    condition_to_column: str | None
     dq_results_null_ratio: float
     certainty_null_ratio: float
     mse: float

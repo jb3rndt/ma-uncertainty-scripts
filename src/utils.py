@@ -1,5 +1,6 @@
 import datetime
 import json
+import shutil
 from hashlib import sha1
 from pathlib import Path
 from typing import Generator, List, Literal, Tuple, cast
@@ -64,7 +65,9 @@ def execute_run(
             )
             return None
 
-        results_folder.mkdir(parents=True, exist_ok=True)
+        if results_folder.exists():
+            shutil.rmtree(results_folder)
+        results_folder.mkdir(parents=True)
         orchestrator = DQOrchestrator(
             writer_config_path=materialize(
                 {"writer_name": "csv", "path": str(results_folder / "dq_results.csv")}
@@ -156,7 +159,7 @@ def grouped_results_and_certainties(
 def make_labels(df: pd.DataFrame) -> List[str]:
     types = df["type"].unique()
     if len(types) != 1:
-        raise ValueError(f"Expected only one type, but got {[t for t in types]}")
+        raise ValueError(f"Expected exactly one type, but got {[t for t in types]}")
     data_type = types[0]
     if data_type == "polluted":
         return [f"{x}" for x in df["pollution_rate"].unique()]
@@ -264,6 +267,8 @@ def flatten_evaluations(evaluations: dict) -> pd.DataFrame:
 def res(df: pd.DataFrame) -> List[ColumnEvaluationResult]:
     return df["result"].tolist()
 
+def res_raw(df: pd.DataFrame) -> List[ColumnRawData]:
+    return df["result"].tolist()
 
 def get_raw_results() -> pd.DataFrame:
     key = "df_raw"
@@ -281,3 +286,6 @@ def get_evaluations() -> pd.DataFrame:
         globals()[key] = flatten_evaluations(load_evaluations())
 
     return globals()[key]
+
+def first_or_none(iterable):
+    return next(iter(iterable), None)
