@@ -267,8 +267,10 @@ def flatten_evaluations(evaluations: dict) -> pd.DataFrame:
 def res(df: pd.DataFrame) -> List[ColumnEvaluationResult]:
     return df["result"].tolist()
 
+
 def res_raw(df: pd.DataFrame) -> List[ColumnRawData]:
     return df["result"].tolist()
+
 
 def get_raw_results() -> pd.DataFrame:
     key = "df_raw"
@@ -286,6 +288,7 @@ def get_evaluations() -> pd.DataFrame:
         globals()[key] = flatten_evaluations(load_evaluations())
 
     return globals()[key]
+
 
 def first_or_none(iterable):
     return next(iter(iterable), None)

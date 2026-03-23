@@ -16,13 +16,36 @@ def is_polluted_dataset(dataset_name: str) -> bool:
     return not any(keyword in dataset_name for keyword in ["original", "cleaned"])
 
 
-def get_error_mechanism(mechanism_config_value: str):
+def get_error_mechanism(col_config: dict | None):
+    if not col_config:
+        return None
+    mechanism_config_value = col_config["error_mechanism"]["error_mechanism"]
     possible = ["EAR", "ENAR", "ECAR"]
     for mechanism in possible:
         if mechanism in mechanism_config_value:
             return mechanism
     raise ValueError(
         f"Unknown mechanism in config value {mechanism_config_value}. Expected one of {possible}"
+    )
+
+
+def get_condition_to_column(col_config: dict | None):
+    if not col_config:
+        return None
+    return col_config["error_mechanism"].get("condition_to_column", None)
+
+
+def get_col_config(pollution_config: dict | None, col: str, is_tuple_based: bool):
+    key = (
+        col
+        if not is_tuple_based
+        else next(
+            iter((pollution_config or {}).get("columns", {}).keys()),
+            "None",
+        )
+    )
+    return first_or_none(
+        [config for config in (pollution_config or {}).get("columns", {}).get(key, [])]
     )
 
 
@@ -61,7 +84,7 @@ def pr_auc(expected: pd.Series, predicted: pd.Series):
 
 def evaluate_run(
     results_folder: Path,
-    skip_existing_evaluations: bool = False,
+    skip_existing_evaluations: bool = True,
 ):
     if (
         skip_existing_evaluations
@@ -110,10 +133,14 @@ def evaluate_run(
     ):
         data = reference_per_data_config[dataset]["data"]
         pollution_config = pollution_configs.get(dataset, None)
-        if any("," in col for col in dq_results.columns.to_list()):
+        is_tuple_based = any("," in col for col in dq_results.columns.to_list())
+        assert (
+            not is_tuple_based or len(dq_results.columns) == 1
+        ), "Tuple-based results should have only one column with tuple column names"
+        if is_tuple_based:
             is_clean_mask = ~reference_per_data_config[dataset]["mask"]
             is_clean_mask = pd.DataFrame(
-                is_clean_mask.mean(axis=1), columns=dq_results.columns
+                is_clean_mask.all(axis="columns"), columns=dq_results.columns
             )
         else:
             # mask has to be inverted because True indicates polluted values for which the quality should be 0
@@ -127,27 +154,17 @@ def evaluate_run(
             col: dataclasses.asdict(
                 ColumnRawData(
                     pollution_ratio=1 - is_clean_mask[col].mean(),
-                    pollution_mechanism=first_or_none(
-                        {
-                            get_error_mechanism(
-                                config["error_mechanism"]["error_mechanism"]
-                            )
-                            for config in (pollution_config or {})
-                            .get("columns", {})
-                            .get(col, [])
-                        }
+                    pollution_mechanism=get_error_mechanism(
+                        get_col_config(pollution_config, col, is_tuple_based)
                     ),
-                    condition_to_column=first_or_none(
-                        {
-                            config["error_mechanism"].get(
-                                    "condition_to_column", None
-                                )
-                                for config in (pollution_config or {})
-                                .get("columns", {})
-                                .get(col, [])
-                            }
+                    condition_to_column=get_condition_to_column(
+                        get_col_config(pollution_config, col, is_tuple_based)
                     ),
-                    data=data[col].to_list(),
+                    data=(
+                        data.to_numpy().tolist()
+                        if is_tuple_based
+                        else data[col].to_list()
+                    ),
                     dq_result=dq_results[col].to_list(),
                     certainty=dq_certainties[col].to_list(),
                     is_clean=is_clean_mask[col].to_list(),
@@ -176,30 +193,18 @@ def evaluate_run(
                 binary_is_polluted_mask, 1 - dq_results[col] * dq_certainties[col]
             )
 
-            aggregation_results = evaluate_aggregation_methods(
-                dq_results[col], dq_certainties[col], 1 - is_clean_mask[col]
-            )
+            # aggregation_results = evaluate_aggregation_methods(
+            #     dq_results[col], dq_certainties[col], 1 - is_clean_mask[col]
+            # )
 
             evaluations[metric][dataset][col] = dataclasses.asdict(
                 ColumnEvaluationResult(
                     pollution_ratio=1 - is_clean_mask[col].mean(),
-                    pollution_mechanism=first_or_none(
-                        {
-                            get_error_mechanism(
-                                config["error_mechanism"]["error_mechanism"]
-                            )
-                            for config in (pollution_config or {})
-                            .get("columns", {})
-                            .get(col, [])
-                        }
+                    pollution_mechanism=get_error_mechanism(
+                        get_col_config(pollution_config, col, is_tuple_based)
                     ),
-                    condition_to_column=first_or_none(
-                        {
-                            config["error_mechanism"].get("condition_to_column", None)
-                            for config in (pollution_config or {})
-                            .get("columns", {})
-                            .get(col, [])
-                        }
+                    condition_to_column=get_condition_to_column(
+                        get_col_config(pollution_config, col, is_tuple_based)
                     ),
                     dq_results_null_ratio=dq_results[col].isna().mean(),
                     certainty_null_ratio=dq_certainties[col].isna().mean(),
@@ -223,12 +228,8 @@ def evaluate_run(
                     fn_weighted=int(FNW[col]),
                     tp_weighted=int(TPW[col]),
                     tn_weighted=int(TNW[col]),
-                    js_divergence_per_method_and_model=aggregation_results[
-                        "divergence"
-                    ],
-                    js_divergence_per_method_and_model_weighted=aggregation_results[
-                        "weighted_divergence"
-                    ],
+                    js_divergence_per_method_and_model={},  # aggregation_results["divergence"],
+                    js_divergence_per_method_and_model_weighted={},  # aggregation_results["weighted_divergence"],
                 )
             )
 

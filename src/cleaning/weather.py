@@ -94,6 +94,16 @@ CONSISTENCY_RULES = {
     ],
 }
 
+CONSISTENCY_TUPLE_RULES = [
+    lambda row: row["MinTemp"] <= row["MaxTemp"],
+    lambda row: row["MinTemp"] <= row["Temp9am"] <= row["MaxTemp"],
+    lambda row: row["MinTemp"] <= row["Temp3pm"] <= row["MaxTemp"],
+    lambda row: row["Rainfall"] != 0
+    and row["RainToday"] == "Yes"
+    or row["Rainfall"] == 0
+    and row["RainToday"] == "No",
+]
+
 
 def clean_weather(data: pd.DataFrame) -> pd.DataFrame:
     # Drop null values
@@ -104,6 +114,13 @@ def clean_weather(data: pd.DataFrame) -> pd.DataFrame:
     # RainTomorrow stores 0 and 1 instead of Yes and No
     cleaned["RainTomorrow"] = cleaned["RainTomorrow"].map({0: "No", 1: "Yes"})
 
+    cleaned["MinTemp"] = cleaned[["MinTemp", "Temp9am", "Temp3pm"]].min(axis=1)
+    cleaned["MaxTemp"] = cleaned[["MaxTemp", "Temp9am", "Temp3pm"]].max(axis=1)
+
+    cleaned["RainToday"] = cleaned["Rainfall"].apply(
+        lambda x: "Yes" if x != 0 else "No"
+    )
+
     for col, rules in CONSISTENCY_RULES.items():
         rule_results = cleaned[col].apply(
             lambda value: all(rule(value) for rule in rules)
@@ -111,5 +128,14 @@ def clean_weather(data: pd.DataFrame) -> pd.DataFrame:
         if not rule_results.all():
             print(cleaned[~rule_results])
             raise ValueError(f"There are still consistency violations in column {col}.")
+
+    # Apply tuple consistency rules
+    for i, rule in enumerate(CONSISTENCY_TUPLE_RULES):
+        rule_results = cleaned.apply(rule, axis="columns")
+        if not rule_results.all():
+            print(cleaned[~rule_results])
+            raise ValueError(
+                f"There are still consistency violations in the DataFrame. Rule #{i + 1} failed."
+            )
 
     return cleaned

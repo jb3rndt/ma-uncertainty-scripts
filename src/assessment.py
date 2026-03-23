@@ -220,6 +220,37 @@ def assess_consistency(folder: Path, force=False):
     )
 
 
+def assess_tuple_consistency(folder: Path, force=False):
+    if (folder / "results" / "dq_results.csv").exists() and not force:
+        print(
+            f"Results file {(folder / 'results' / 'dq_results.csv').absolute()} already exists. Skipping."
+        )
+        return folder / "results"
+
+    metrics = [consistency_ruleBasedPipino.__name__]
+    metric_configs: List[str | None | MetricConfig] = [
+        consistency_ruleBasedPipino_config(
+            tuple_rules=[
+                lambda row: row["MinTemp"] <= row["MaxTemp"],
+                lambda row: row["MinTemp"] <= row["Temp9am"] <= row["MaxTemp"],
+                lambda row: row["MinTemp"] <= row["Temp3pm"] <= row["MaxTemp"],
+                lambda row: row["Rainfall"] != 0
+                and row["RainToday"] == "Yes"
+                or row["Rainfall"] == 0
+                and row["RainToday"] == "No",
+            ],
+        ),
+    ]
+
+    return execute_run(
+        results_folder=folder / "results",
+        polluted_folder=folder,
+        metrics=metrics,
+        metric_configs=metric_configs,
+        datasets=["weather"],
+    )
+
+
 def assess_completeness(folder: Path, force=False):
     if (folder / "results").exists() and not force:
         print(
@@ -252,13 +283,16 @@ def assess_timeliness(folder: Path, force=False):
     metric_configs: List[str | None | MetricConfig] = [
         timeliness_heinrich_config(
             timeliness_config_per_column={
-                "ADDRESSLINE1": timeliness_heinrich_column_config(
-                    decline_rate=0.1 / 365.25,
-                    ingestion_date_column="ORDERDATE",
-                    to_datetime_kwargs={"dayfirst": True},
-                    simulated_assessment_date="2021-05-30",  # newest entry in auto sales data: 2020-05-30T22:00:00.000Z
-                    simulated_timestamp_precision="year",
-                ),
+                **{
+                    col: timeliness_heinrich_column_config(
+                        decline_rate=0.1 / 365.25,
+                        ingestion_date_column="ORDERDATE",
+                        to_datetime_kwargs={"dayfirst": True},
+                        simulated_assessment_date="2021-05-30",  # newest entry in auto sales data: 2020-05-30T22:00:00.000Z
+                        simulated_timestamp_precision="year",
+                    )
+                    for col in ["ADDRESSLINE1", "CITY", "POSTALCODE", "COUNTRY"]
+                },
                 **{
                     col: timeliness_heinrich_column_config(
                         decline_rate=stats["avg_changes"] / stats["avg_time"],
