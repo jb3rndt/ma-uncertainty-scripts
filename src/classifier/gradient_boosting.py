@@ -2,12 +2,12 @@ import dataclasses
 import json
 import time
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List, Literal
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn import ensemble
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -25,7 +25,7 @@ class RegressionConfig:
     test_size: float = 0.2
     max_depth: int | None = None
     max_leaf_nodes: int | None = None
-    min_samples_split: int | None = None
+    min_samples_split: int = 2
     cols: List[str] = dataclasses.field(
         default_factory=lambda: [
             # "Humidity3pm",
@@ -52,10 +52,58 @@ class RegressionConfig:
     )
 
 
+def evaluate_classifier(
+    config: RegressionConfig,
+    random_state: np.random.RandomState | None,
+    data: pd.DataFrame,
+    cleaned_data: pd.DataFrame,
+):
+    train_idx, test_idx = train_test_split(
+        data.index,
+        test_size=config.test_size,
+        stratify=cleaned_data.loc[data.index]["RainTomorrow"],
+        random_state=random_state,
+    )
+    X_train = data.loc[train_idx].drop("RainTomorrow", axis=1)
+    y_train = data.loc[train_idx]["RainTomorrow"]
+    X_test = cleaned_data.loc[test_idx].drop("RainTomorrow", axis=1)
+    y_test = cleaned_data.loc[test_idx]["RainTomorrow"]
+
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+
+    X_train_scaled = scaler.transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    clf = ensemble.GradientBoostingClassifier(
+        n_estimators=config.n_estimators,
+        learning_rate=config.learning_rate,
+        subsample=config.subsample,
+        max_depth=config.max_depth,
+        random_state=config.random_state,
+        max_leaf_nodes=config.max_leaf_nodes,
+        min_samples_split=config.min_samples_split,
+    )
+    clf.fit(X_train_scaled, y_train)
+
+    y_pred = clf.predict(X_test_scaled)
+    return f1_score(y_test, y_pred)
+
+
 def run():
     run = int(time.time())
     Path(f"regression-results/{run}").mkdir(exist_ok=True, parents=True)
-    config = RegressionConfig(random_state=run, max_leaf_nodes=4, min_samples_split=5)
+    config = RegressionConfig(
+        random_state=run,
+        max_leaf_nodes=4,
+        min_samples_split=5,
+        test_size=0.3,
+        n_estimators=300,
+        max_depth=None,
+        subsample=0.5,
+        learning_rate=0.2,
+    )
+    random_state = np.random.RandomState(config.random_state)
 
     df_raw = get_raw_results()
 
@@ -70,7 +118,7 @@ def run():
         & (df_raw["dimension"] == "consistency_tuple")
         & (df_raw["type"] == "polluted")
         & (df_raw["pollution_mechanism"] == "ECAR")
-        & (df_raw["pollution_rate"] == 0.2)
+        & (df_raw["pollution_rate"] == 0.35)
     ]
 
     cleaned_data = pd.DataFrame(
@@ -103,13 +151,36 @@ def run():
     cleaned_data = transform(cleaned_data)
     polluted_data = transform(polluted_data)
 
-    all_idx = cleaned_data.index
-    results = {}
+    measurements: List[Dict[Literal["data", "score", "run", "threshold"], Any]] = []
 
-    for t in config.thresholds:
+    for n in range(config.n_runs):
+        run_start_time = time.time()
+        measurements.append(
+            {
+                "data": "cleaned",
+                "score": evaluate_classifier(
+                    config, random_state, cleaned_data, cleaned_data
+                ),
+                "run": n,
+                "threshold": None,
+            }
+        )
+        measurements.append(
+            {
+                "data": "polluted",
+                "score": evaluate_classifier(
+                    config, random_state, polluted_data, cleaned_data
+                ),
+                "run": n,
+                "threshold": None,
+            }
+        )
+        print(f"Completed run {n + 1} after {time.time() - run_start_time:.2f} seconds")
+
+    for i, t in enumerate(config.thresholds):
+        start_time = time.time()
+        print(f"[{i+1}/{len(config.thresholds)}] Running for threshold {t}...")
         datasets = [
-            (cleaned_data, "clean"),
-            (polluted_data, "polluted"),
             (polluted_data.loc[polluted_dq > t], "filtered_dq"),
             (
                 polluted_data.loc[polluted_dq * polluted_certainty > t],
@@ -117,61 +188,32 @@ def run():
             ),
         ]
 
-        run_scores = {key: [] for _, key in datasets}
-
-        for _ in range(config.n_runs):
-            train_idx, test_idx = train_test_split(
-                all_idx,
-                test_size=config.test_size,
-                stratify=cleaned_data["RainTomorrow"],
-            )
-
-            test_df: pd.DataFrame = cleaned_data.loc[test_idx]
-            X_test_clean = test_df.drop("RainTomorrow", axis=1)
-            y_test_clean = test_df["RainTomorrow"]
-
+        for n in range(config.n_runs):
+            run_start_time = time.time()
             for data, key in datasets:
-                train_idx_available = data.index.intersection(train_idx)
-                if len(train_idx_available) == 0:
-                    run_scores[key].append(np.nan)
+                if len(data) == 0:
                     continue
-
-                train_df = data.loc[train_idx_available]
-                X_train = train_df.drop("RainTomorrow", axis=1)
-                y_train = train_df["RainTomorrow"]
-
-                if y_train.nunique() < 2:
-                    run_scores[key].append(np.nan)
-                    continue
-
-                scaler = StandardScaler()
-                scaler.fit(X_train)
-
-                X_train_scaled = scaler.transform(X_train)
-                X_test_scaled = scaler.transform(X_test_clean)
-
-                clf = GradientBoostingClassifier(
-                    n_estimators=config.n_estimators,
-                    learning_rate=config.learning_rate,
-                    subsample=config.subsample,
-                    max_depth=config.max_depth,
-                ).fit(X_train_scaled, y_train)
-
-                y_pred = clf.predict(X_test_scaled)
-                run_scores[key].append(f1_score(y_test_clean, y_pred))
-
-        for key, scores in run_scores.items():
-            valid_scores = [s for s in scores if not np.isnan(s)]
-            results.setdefault(key, []).append(
-                np.mean(valid_scores) if valid_scores else np.nan
+                measurements.append(
+                    {
+                        "data": key,
+                        "score": evaluate_classifier(
+                            config, random_state, data, cleaned_data
+                        ),
+                        "run": n,
+                        "threshold": t,
+                    }
+                )
+            print(
+                f"[{i+1}/{len(config.thresholds)}] Completed run {n + 1} after {time.time() - run_start_time:.2f} seconds"
             )
+        print(
+            f"[{i+1}/{len(config.thresholds)}] Completed after {time.time() - start_time:.2f} seconds"
+        )
 
-    df_gb = pd.DataFrame(results, index=config.thresholds)
-    df_gb.to_csv(f"regression-results/{run}/results.csv")
+    df_gb = pd.DataFrame(measurements)
+    df_gb.to_csv(f"regression-results/{run}/results.csv", index=False)
     json.dump(
         dataclasses.asdict(config),
         open(f"regression-results/{run}/config.json", "w"),
         indent=2,
     )
-    df_gb.plot(kind="line")
-    plt.show()
