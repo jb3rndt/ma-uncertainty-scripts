@@ -179,26 +179,31 @@ def normalize_pollution_rate(rate: float) -> float:
     return POLLUTION_RATES[np.argmin(np.abs(np.array(POLLUTION_RATES) - rate))]
 
 
-def get_necessary_folders():
-    with open(
-        "/Users/jberndt/Documents/Masterarbeit/data-pollution/.latest_pollutions.json",
-        "r",
-    ) as f:
-        polluted_folders = json.load(f)
+def get_necessary_folders(run_name: str | None = None):
+    polluted_path = Path(
+        "/Users/jberndt/Documents/Masterarbeit/data-pollution/data/polluted"
+    )
+    pollution_folder = (
+        max(polluted_path.glob("*")) if run_name is None else polluted_path / run_name
+    )
+    assert (
+        pollution_folder.exists()
+    ), f"Pollution folder {pollution_folder} does not exist."
+    polluted_folders = list(pollution_folder.glob("*"))
 
-    return polluted_folders["polluted_folders"] + [
-        ORIGINAL_DATA_PATH,
+    return sorted(polluted_folders) + [
+        # ORIGINAL_DATA_PATH,
         CLEANED_DATA_PATH,
     ]
 
 
-def load_raw_results():
+def load_raw_results(run_name: str | None = None):
     return {
         (dim, Path(folder).name): json.load(
             (Path(folder) / dim / "results" / "raw_results.json").open()
         )
-        for folder in get_necessary_folders()
-        for dim in ["timeliness", "completeness", "consistency"]
+        for folder in get_necessary_folders(run_name)
+        for dim in ["timeliness", "completeness", "consistency", "consistency_tuple"]
         if (Path(folder) / dim / "results" / "raw_results.json").exists()
     }
 
@@ -228,13 +233,13 @@ def flatten_raw_results(raw_results: dict) -> pd.DataFrame:
     )
 
 
-def load_evaluations():
+def load_evaluations(run_name: str | None = None):
     return {
         (dim, Path(folder).name): json.load(
             (Path(folder) / dim / "results" / "evaluations.json").open()
         )
-        for folder in get_necessary_folders()
-        for dim in ["timeliness", "completeness", "consistency"]
+        for folder in get_necessary_folders(run_name)
+        for dim in ["timeliness", "completeness", "consistency", "consistency_tuple"]
         if (Path(folder) / dim / "results" / "evaluations.json").exists()
     }
 
@@ -272,20 +277,20 @@ def res_raw(df: pd.DataFrame) -> List[ColumnRawData]:
     return df["result"].tolist()
 
 
-def get_raw_results() -> pd.DataFrame:
-    key = "df_raw"
+def get_raw_results(run_name: str | None = None) -> pd.DataFrame:
+    key = "__df_raw_results__"
     if key not in globals():
         print("Loading raw results...")
-        globals()[key] = flatten_raw_results(load_raw_results())
+        globals()[key] = flatten_raw_results(load_raw_results(run_name))
 
     return globals()[key]
 
 
-def get_evaluations() -> pd.DataFrame:
-    key = "df_eval"
+def get_evaluations(run_name: str | None = None) -> pd.DataFrame:
+    key = "__df_evaluations__"
     if key not in globals():
         print("Loading evaluations...")
-        globals()[key] = flatten_evaluations(load_evaluations())
+        globals()[key] = flatten_evaluations(load_evaluations(run_name))
 
     return globals()[key]
 
