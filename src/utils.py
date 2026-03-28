@@ -297,3 +297,29 @@ def get_evaluations(run_name: str | None = None) -> pd.DataFrame:
 
 def first_or_none(iterable):
     return next(iter(iterable), None)
+
+def grouped_figure(
+    df: pd.DataFrame,
+    figureby: List[str],
+    colby: List[str],
+    *,
+    figsize: Tuple[int, int] = (3, 3),
+    nrows=1,
+):
+    for fig_key, fig_group in df.groupby(figureby):
+        grouped_by_column = fig_group.groupby(colby)
+        ncols = len(grouped_by_column)
+
+        fig, axes = plt.subplots(
+            nrows=nrows,
+            ncols=ncols,
+            figsize=(figsize[0] * ncols, figsize[1] * nrows),
+            sharex=True,
+            sharey=True,
+        )
+        axes = np.array(axes).reshape(nrows, ncols)
+        for row, row_axes in enumerate(axes):
+            for (col_key, col_group), (col, ax) in zip(
+                grouped_by_column, enumerate(row_axes)
+            ):
+                yield fig_key, col_key, col_group, ax, fig, row, col
