@@ -133,11 +133,14 @@ def evaluate_run(
     ):
         data = reference_per_data_config[dataset]["data"]
         pollution_config = pollution_configs.get(dataset, None)
-        is_tuple_based = any("," in col for col in dq_results.columns.to_list())
+        is_tuple_based_assessment = any(
+            "," in col for col in dq_results.columns.to_list()
+        )
+        is_tuple_based_pollution = metric == "timeliness_heinrich"
         assert (
-            not is_tuple_based or len(dq_results.columns) == 1
+            not is_tuple_based_assessment or len(dq_results.columns) == 1
         ), "Tuple-based results should have only one column with tuple column names"
-        if is_tuple_based:
+        if is_tuple_based_assessment:
             is_clean_mask = ~reference_per_data_config[dataset]["mask"]
             is_clean_mask = pd.DataFrame(
                 is_clean_mask.all(axis="columns"), columns=dq_results.columns
@@ -155,14 +158,22 @@ def evaluate_run(
                 ColumnRawData(
                     pollution_ratio=1 - is_clean_mask[col].mean(),
                     pollution_mechanism=get_error_mechanism(
-                        get_col_config(pollution_config, col, is_tuple_based)
+                        get_col_config(
+                            pollution_config,
+                            col,
+                            is_tuple_based_assessment or is_tuple_based_pollution,
+                        )
                     ),
                     condition_to_column=get_condition_to_column(
-                        get_col_config(pollution_config, col, is_tuple_based)
+                        get_col_config(
+                            pollution_config,
+                            col,
+                            is_tuple_based_assessment or is_tuple_based_pollution,
+                        )
                     ),
                     data=(
                         data.to_numpy().tolist()
-                        if is_tuple_based
+                        if is_tuple_based_assessment
                         else data[col].to_list()
                     ),
                     dq_result=dq_results[col].to_list(),
@@ -201,10 +212,18 @@ def evaluate_run(
                 ColumnEvaluationResult(
                     pollution_ratio=1 - is_clean_mask[col].mean(),
                     pollution_mechanism=get_error_mechanism(
-                        get_col_config(pollution_config, col, is_tuple_based)
+                        get_col_config(
+                            pollution_config,
+                            col,
+                            is_tuple_based_assessment or is_tuple_based_pollution,
+                        )
                     ),
                     condition_to_column=get_condition_to_column(
-                        get_col_config(pollution_config, col, is_tuple_based)
+                        get_col_config(
+                            pollution_config,
+                            col,
+                            is_tuple_based_assessment or is_tuple_based_pollution,
+                        )
                     ),
                     dq_results_null_ratio=dq_results[col].isna().mean(),
                     certainty_null_ratio=dq_certainties[col].isna().mean(),
