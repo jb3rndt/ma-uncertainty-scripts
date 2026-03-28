@@ -64,9 +64,9 @@ def is_unpadded_nonempty_str(value: Any) -> bool:
     return isinstance(value, str) and value.strip() == value and len(value) > 0
 
 
-def is_datetime(value: str) -> bool:
+def is_datetime(value: str, to_datetime_kwargs={}) -> bool:
     try:
-        pd.to_datetime(value)
+        pd.to_datetime(value, **to_datetime_kwargs)
         return True
     except (ValueError, TypeError):
         return False
@@ -95,6 +95,24 @@ temp_rules = [
     lambda value: notna(value) and is_number(value),
 ]
 
+speed_rules = [
+    lambda value: notna(value) and try_is_between(value, 0, 140),
+    lambda value: notna(value) and str(extract_number(value))[::-1].find(".") == 1,
+    lambda value: notna(value) and is_number(value),
+]
+
+pressure_rules = [
+    lambda value: notna(value) and try_is_between(value, 900, 1100),
+    lambda value: notna(value) and str(extract_number(value))[::-1].find(".") == 1,
+    lambda value: notna(value) and is_number(value),
+]
+
+humidity_rules = [
+    # Changing [0-100] to [0-1] is undetectable here
+    lambda value: notna(value) and try_is_between(value, 0, 100),
+    lambda value: notna(value) and str(extract_number(value))[::-1].find(".") == 1,
+    lambda value: notna(value) and is_number(value),
+]
 
 def is_duration_format(value: str) -> bool:
     parts = value.split(" ")
@@ -166,6 +184,15 @@ def assess_consistency(folder: Path, force=False):
             attribute_rules={
                 "MinTemp": temp_rules,
                 "MaxTemp": temp_rules,
+                "Temp9am": temp_rules,
+                "Temp3pm": temp_rules,
+                "WindGustSpeed": speed_rules,
+                "WindSpeed9am": speed_rules,
+                "WindSpeed3pm": speed_rules,
+                "Pressure9am": pressure_rules,
+                "Pressure3pm": pressure_rules,
+                "Humidity9am": humidity_rules,
+                "Humidity3pm": humidity_rules,
                 "PRICEEACH": [
                     lambda value: notna(value) and is_number(value),
                     lambda value: notna(value) and not is_integer(value),
@@ -174,7 +201,7 @@ def assess_consistency(folder: Path, force=False):
                     lambda value: notna(value) and value.strip() == value,
                     lambda value: (
                         notna(value)
-                        and is_datetime(value.strip())
+                        and is_datetime(value.strip(), {"dayfirst": False})
                         and contains_expected_datetime_format(value.strip(), "%d/%m/%Y")
                     ),
                 ],
