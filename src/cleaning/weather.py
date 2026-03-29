@@ -33,10 +33,6 @@ DIRECTIONS = [
 
 
 CONSISTENCY_RULES = {
-    "row ID": [
-        is_unpadded_nonempty_str,
-        lambda value: value.startswith("Row") and is_number(value[3:]),
-    ],
     "Location": [
         is_unpadded_nonempty_str,
     ],
@@ -107,12 +103,9 @@ CONSISTENCY_TUPLE_RULES = [
 
 def clean_weather(data: pd.DataFrame) -> pd.DataFrame:
     # Drop null values
-    cleaned = data.drop(
+    cleaned = data.replace("NA", pd.NA).drop(
         columns=["Evaporation", "Sunshine", "Cloud9am", "Cloud3pm"]
     ).dropna()
-
-    # RainTomorrow stores 0 and 1 instead of Yes and No
-    cleaned["RainTomorrow"] = cleaned["RainTomorrow"].map({0: "No", 1: "Yes"})
 
     cleaned["MinTemp"] = cleaned[["MinTemp", "Temp9am", "Temp3pm"]].min(axis=1)
     cleaned["MaxTemp"] = cleaned[["MaxTemp", "Temp9am", "Temp3pm"]].max(axis=1)
