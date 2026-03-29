@@ -48,13 +48,12 @@ class RegressionConfig:
         ]
     )
     thresholds: List[float] = dataclasses.field(
-        default_factory=lambda: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+        default_factory=lambda: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     )
 
 
 def evaluate_classifier(
     config: RegressionConfig,
-    random_state: np.random.RandomState | None,
     data: pd.DataFrame,
     cleaned_data: pd.DataFrame,
 ):
@@ -62,7 +61,7 @@ def evaluate_classifier(
         data.index,
         test_size=config.test_size,
         stratify=cleaned_data.loc[data.index]["RainTomorrow"],
-        random_state=random_state,
+        random_state=config.random_state,
     )
     X_train = data.loc[train_idx].drop("RainTomorrow", axis=1)
     y_train = data.loc[train_idx]["RainTomorrow"]
@@ -155,26 +154,15 @@ def run():
 
     for n in range(config.n_runs):
         run_start_time = time.time()
-        measurements.append(
-            {
-                "data": "cleaned",
-                "score": evaluate_classifier(
-                    config, random_state, cleaned_data, cleaned_data
-                ),
-                "run": n,
-                "threshold": None,
-            }
-        )
-        measurements.append(
-            {
-                "data": "polluted",
-                "score": evaluate_classifier(
-                    config, random_state, polluted_data, cleaned_data
-                ),
-                "run": n,
-                "threshold": None,
-            }
-        )
+        for data, key in [(cleaned_data, "cleaned"), (polluted_data, "polluted")]:
+            measurements.append(
+                {
+                    "data": key,
+                    "score": evaluate_classifier(config, data, cleaned_data),
+                    "run": n,
+                    "threshold": None,
+                }
+            )
         print(f"Completed run {n + 1} after {time.time() - run_start_time:.2f} seconds")
 
     for i, t in enumerate(config.thresholds):
@@ -196,9 +184,7 @@ def run():
                 measurements.append(
                     {
                         "data": key,
-                        "score": evaluate_classifier(
-                            config, random_state, data, cleaned_data
-                        ),
+                        "score": evaluate_classifier(config, data, cleaned_data),
                         "run": n,
                         "threshold": t,
                     }
