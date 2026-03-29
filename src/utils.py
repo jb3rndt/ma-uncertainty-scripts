@@ -5,12 +5,13 @@ from hashlib import sha1
 from pathlib import Path
 from typing import Generator, List, Literal, Tuple, cast
 
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
 from metis.dq_orchestrator import DQOrchestrator
 from metis.metric.config import MetricConfig
-from src.constants import CLEANED_DATA_PATH, ORIGINAL_DATA_PATH, POLLUTION_RATES
+from src.constants import CLEANED_DATA_PATH, POLLUTION_RATES
 from src.evaluation.types import ColumnEvaluationResult, ColumnRawData
 
 DSLiteral = Literal["weather", "auto_sales", "movies", "open_library"]
@@ -118,7 +119,7 @@ def parse_columnNames(columnNames_str: str) -> str:
     return columnNames[0] if len(columnNames) == 1 else ",".join(columnNames)
 
 
-def format_columnName(columnName: str) -> str:
+def format_columnName(columnName):
     return "Full Tuple" if "," in columnName else columnName
 
 

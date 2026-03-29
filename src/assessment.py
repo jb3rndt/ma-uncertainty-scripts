@@ -21,12 +21,21 @@ from metis.metric.consistency.consistency_ruleBasedPipino import (
 from metis.metric.consistency.consistency_ruleBasedPipino_config import (
     consistency_ruleBasedPipino_config,
 )
+from metis.metric.correctness.correctness_heinrich import correctness_heinrich
+from metis.metric.correctness.correctness_heinrich_config import (
+    correctness_heinrich_config,
+)
 from metis.metric.timeliness.timeliness_heinrich import timeliness_heinrich
 from metis.metric.timeliness.timeliness_heinrich_config import (
     timeliness_heinrich_column_config,
     timeliness_heinrich_config,
 )
-from src.constants import ALLOWED_GENRES, PERSON_LIST_REGEX, TOP_OL_COLUMNS
+from src.constants import (
+    ALLOWED_GENRES,
+    CLEANED_DATA_PATH,
+    PERSON_LIST_REGEX,
+    TOP_OL_COLUMNS,
+)
 from src.utils import execute_run
 
 NUMBER_REGEX = re.compile(r"^\-?\d+(\.\d+)?")
@@ -113,6 +122,7 @@ humidity_rules = [
     lambda value: notna(value) and str(extract_number(value))[::-1].find(".") == 1,
     lambda value: notna(value) and is_number(value),
 ]
+
 
 def is_duration_format(value: str) -> bool:
     parts = value.split(" ")
@@ -295,6 +305,27 @@ def assess_completeness(folder: Path, force=False):
         metric_configs=[
             completeness_nullAndDMVRatio_config(),
             completeness_nullRatio_config(),
+        ],
+    )
+
+
+def assess_correctness(folder: Path, force=False):
+    if (folder / "results").exists() and not force:
+        print(
+            f"Results folder {(folder / 'results').absolute()} already exists. SKIPPING!"
+        )
+        return folder / "results"
+
+    return execute_run(
+        results_folder=folder / "results",
+        polluted_folder=folder,
+        metrics=[correctness_heinrich.__name__],
+        # Hard coded for weather data for now
+        metric_configs=[
+            correctness_heinrich_config(
+                reference_file_path=folder / "weather.reference.csv",
+                superset_file_path=CLEANED_DATA_PATH / "weather.csv",
+            )
         ],
     )
 

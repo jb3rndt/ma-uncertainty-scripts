@@ -4,6 +4,7 @@ from typing import List
 from src.assessment import (
     assess_completeness,
     assess_consistency,
+    assess_correctness,
     assess_timeliness,
     assess_tuple_consistency,
 )
@@ -18,6 +19,7 @@ def main():
         all_result_folders.extend(
             [
                 assess_completeness(Path(folder) / "completeness"),
+                assess_correctness(Path(folder) / "correctness"),
                 assess_consistency(Path(folder) / "consistency"),
                 assess_tuple_consistency(Path(folder) / "consistency_tuple"),
                 assess_timeliness(Path(folder) / "timeliness"),
