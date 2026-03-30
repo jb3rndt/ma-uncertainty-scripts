@@ -5,9 +5,9 @@ from hashlib import sha1
 from pathlib import Path
 from typing import Generator, List, Literal, Tuple, cast
 
-from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 
 from metis.dq_orchestrator import DQOrchestrator
 from metis.metric.config import MetricConfig
@@ -53,12 +53,13 @@ def execute_run(
     try:
         start_time = datetime.datetime.now()
 
-        data_paths = [
-            file
-            for file in polluted_folder.glob("*.csv")
-            if not file.name.endswith(".mask.csv")
-            and any(dataset in file.name for dataset in datasets)
+        possible_data_paths = [
+            polluted_folder / f"{dataset}.{type}.csv"
+            for dataset in datasets
+            for type in ["polluted", "cleaned", "original"]
         ]
+
+        data_paths = [file for file in possible_data_paths if file.exists()]
 
         if not data_paths:
             print(
@@ -200,12 +201,12 @@ def get_necessary_folders(run_name: str | None = None):
 
 def load_raw_results(run_name: str | None = None):
     return {
-        (dim, Path(folder).name): json.load(
-            (Path(folder) / dim / "results" / "raw_results.json").open()
+        (dim_folder.name, folder.name): json.load(
+            (dim_folder / "results" / "raw_results.json").open()
         )
         for folder in get_necessary_folders(run_name)
-        for dim in ["timeliness", "completeness", "consistency", "consistency_tuple"]
-        if (Path(folder) / dim / "results" / "raw_results.json").exists()
+        for dim_folder in folder.glob("*")
+        if (dim_folder / "results" / "raw_results.json").exists()
     }
 
 
@@ -236,12 +237,12 @@ def flatten_raw_results(raw_results: dict) -> pd.DataFrame:
 
 def load_evaluations(run_name: str | None = None):
     return {
-        (dim, Path(folder).name): json.load(
-            (Path(folder) / dim / "results" / "evaluations.json").open()
+        (dim_folder.name, folder.name): json.load(
+            (dim_folder / "results" / "raw_results.json").open()
         )
         for folder in get_necessary_folders(run_name)
-        for dim in ["timeliness", "completeness", "consistency", "consistency_tuple"]
-        if (Path(folder) / dim / "results" / "evaluations.json").exists()
+        for dim_folder in folder.glob("*")
+        if (dim_folder / "results" / "evaluations.json").exists()
     }
 
 
@@ -298,6 +299,7 @@ def get_evaluations(run_name: str | None = None) -> pd.DataFrame:
 
 def first_or_none(iterable):
     return next(iter(iterable), None)
+
 
 def grouped_figure(
     df: pd.DataFrame,
