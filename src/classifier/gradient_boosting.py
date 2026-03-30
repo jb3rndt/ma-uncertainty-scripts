@@ -1,12 +1,9 @@
 import dataclasses
-import json
 import time
-from pathlib import Path
 from typing import Any, Dict, List, Literal
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from sklearn import ensemble
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
@@ -89,21 +86,7 @@ def evaluate_classifier(
     return f1_score(y_test, y_pred)
 
 
-def run():
-    run = int(time.time())
-    Path(f"regression-results/{run}").mkdir(exist_ok=True, parents=True)
-    config = RegressionConfig(
-        random_state=run,
-        max_leaf_nodes=4,
-        min_samples_split=5,
-        test_size=0.3,
-        n_estimators=300,
-        max_depth=None,
-        subsample=0.5,
-        learning_rate=0.2,
-    )
-    random_state = np.random.RandomState(config.random_state)
-
+def prepare_data(config: RegressionConfig):
     df_raw = get_raw_results()
 
     cleaned_results = df_raw[
@@ -150,6 +133,14 @@ def run():
     cleaned_data = transform(cleaned_data)
     polluted_data = transform(polluted_data)
 
+    return cleaned_data, polluted_data, polluted_dq, polluted_certainty
+
+
+def run(config: RegressionConfig):
+    random_state = np.random.RandomState(config.random_state)
+
+    cleaned_data, polluted_data, polluted_dq, polluted_certainty = prepare_data(config)
+
     measurements: List[Dict[Literal["data", "score", "run", "threshold"], Any]] = []
 
     for n in range(config.n_runs):
@@ -169,9 +160,9 @@ def run():
         start_time = time.time()
         print(f"[{i+1}/{len(config.thresholds)}] Running for threshold {t}...")
         datasets = [
-            (polluted_data.loc[polluted_dq > t], "filtered_dq"),
+            (polluted_data.loc[polluted_dq >= t], "filtered_dq"),
             (
-                polluted_data.loc[polluted_dq * polluted_certainty > t],
+                polluted_data.loc[polluted_dq * polluted_certainty >= t],
                 "filtered_dq_certainty",
             ),
         ]
@@ -195,11 +186,4 @@ def run():
         print(
             f"[{i+1}/{len(config.thresholds)}] Completed after {time.time() - start_time:.2f} seconds"
         )
-
-    df_gb = pd.DataFrame(measurements)
-    df_gb.to_csv(f"regression-results/{run}/results.csv", index=False)
-    json.dump(
-        dataclasses.asdict(config),
-        open(f"regression-results/{run}/config.json", "w"),
-        indent=2,
-    )
+    return measurements
