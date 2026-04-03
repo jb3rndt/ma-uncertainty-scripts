@@ -220,6 +220,7 @@ def flatten_raw_results(raw_results: dict) -> pd.DataFrame:
                 "dataset": dataset.split(".")[0],
                 "type": dataset.split(".")[1],
                 "column": format_columnName(column),
+                "raw_column": column,
                 "pollution_rate": normalize_pollution_rate(
                     results[column]["pollution_ratio"]
                 ),
@@ -256,6 +257,7 @@ def flatten_evaluations(evaluations: dict) -> pd.DataFrame:
                 "dataset": dataset.split(".")[0],
                 "type": dataset.split(".")[1],
                 "column": format_columnName(column),
+                "raw_column": column,
                 "pollution_rate": normalize_pollution_rate(
                     results[column]["pollution_ratio"]
                 ),

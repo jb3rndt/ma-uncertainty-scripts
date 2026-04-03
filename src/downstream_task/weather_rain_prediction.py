@@ -1,0 +1,83 @@
+import time
+from typing import Any, Dict, List, Literal
+
+import numpy as np
+import pandas as pd
+from sklearn import ensemble
+from sklearn.metrics import f1_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+from src.downstream_task.config import RegressionConfig
+from src.downstream_task.utils import eval_permutations, prepare_data
+
+
+def evaluate_classifier(
+    config: RegressionConfig,
+    data: pd.DataFrame,
+    cleaned_data: pd.DataFrame,
+    random_state: np.random.RandomState,
+):
+    train_idx, test_idx = train_test_split(
+        data.index,
+        test_size=config.test_size,
+        stratify=cleaned_data.loc[data.index]["RainTomorrow"],
+        random_state=random_state,
+    )
+    X_train = data.loc[train_idx].drop("RainTomorrow", axis=1)
+    y_train = data.loc[train_idx]["RainTomorrow"]
+    X_test = cleaned_data.loc[test_idx].drop("RainTomorrow", axis=1)
+    y_test = cleaned_data.loc[test_idx]["RainTomorrow"]
+
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+
+    X_train_scaled = scaler.transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    clf = ensemble.GradientBoostingClassifier(
+        n_estimators=config.n_estimators,
+        learning_rate=config.learning_rate,
+        subsample=config.subsample,
+        max_depth=config.max_depth,
+        max_leaf_nodes=config.max_leaf_nodes,
+        min_samples_split=config.min_samples_split,
+        random_state=random_state,
+    )
+    clf.fit(X_train_scaled, y_train)
+
+    y_pred = clf.predict(X_test_scaled)
+    return f1_score(y_test, y_pred)
+
+
+def evaluate_weather_rain_prediction(config: RegressionConfig):
+    random_state = np.random.RandomState(config.random_seed)
+
+    cleaned_data, polluted_data, polluted_dq, polluted_certainty = prepare_data(
+        config, "weather"
+    )
+
+    # Transformation
+    def transform(data):
+        data["RainToday"] = data["RainToday"].map({"Yes": 1, "No": 0})
+        data["RainTomorrow"] = data["RainTomorrow"].map({"Yes": 1, "No": 0})
+        # ["MaxTemp","MinTemp","Pressure3pm","Pressure9am","RainTomorrow","WindGustSpeed"]
+        return data[config.cols]
+
+    cleaned_data = transform(cleaned_data)
+    polluted_data = transform(polluted_data)
+
+    measurements: List[Dict[Literal["data", "score", "run", "threshold"], Any]] = []
+
+    for data, key, n, t in eval_permutations(
+        config, cleaned_data, polluted_data, polluted_dq, polluted_certainty
+    ):
+        measurements.append(
+            {
+                "data": key,
+                "score": evaluate_classifier(config, data, cleaned_data, random_state),
+                "run": n,
+                "threshold": t,
+            }
+        )
+    return measurements
