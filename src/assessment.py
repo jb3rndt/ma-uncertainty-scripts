@@ -268,13 +268,56 @@ def assess_tuple_consistency(folder: Path, force=False):
     metric_configs: List[str | None | MetricConfig] = [
         consistency_ruleBasedPipino_config(
             tuple_rules=[
-                lambda row: row["MinTemp"] <= row["MaxTemp"],
-                lambda row: row["MinTemp"] <= row["Temp9am"] <= row["MaxTemp"],
-                lambda row: row["MinTemp"] <= row["Temp3pm"] <= row["MaxTemp"],
-                lambda row: row["Rainfall"] != 0
-                and row["RainToday"] == "Yes"
-                or row["Rainfall"] == 0
-                and row["RainToday"] == "No",
+                (["MinTemp", "MaxTemp"], lambda row: row["MinTemp"] <= row["MaxTemp"]),
+                # (["MinTemp", "Temp9am", "MaxTemp"], lambda row: row["MinTemp"] <= row["Temp9am"] <= row["MaxTemp"]),
+                # (["MinTemp", "Temp3pm", "MaxTemp"], lambda row: row["MinTemp"] <= row["Temp3pm"] <= row["MaxTemp"]),
+                # Correct unit bounds
+                (
+                    [
+                        "Pressure9am",
+                        "Pressure3pm",
+                        "WindGustSpeed",
+                        "WindSpeed9am",
+                        "WindSpeed3pm",
+                        "Temp9am",
+                        "Temp3pm",
+                        "MinTemp",
+                        "MaxTemp",
+                    ],
+                    lambda row: try_is_between(row["Pressure9am"], 900, 1100)
+                    and try_is_between(row["Pressure3pm"], 900, 1100)
+                    and try_is_between(row["WindGustSpeed"], 0, 140)
+                    and try_is_between(row["WindSpeed9am"], 0, 140)
+                    and try_is_between(row["WindSpeed3pm"], 0, 140)
+                    and try_is_between(row["Temp9am"], -10, 50)
+                    and try_is_between(row["Temp3pm"], -10, 50)
+                    and try_is_between(row["MinTemp"], -10, 50)
+                    and try_is_between(row["MaxTemp"], -10, 50),
+                ),
+                (
+                    ["Rainfall", "RainToday"],
+                    lambda row: row["Rainfall"] != 0
+                    and row["RainToday"] == "Yes"
+                    or row["Rainfall"] == 0
+                    and row["RainToday"] == "No",
+                ),
+                (
+                    ["PRICEEACH", "SALES"],
+                    lambda row: try_is_between(row["PRICEEACH"], 20, 300)
+                    and try_is_between(row["SALES"], 400, 14000),
+                ),
+                (
+                    ["DAYS_SINCE_LASTORDER"],
+                    (
+                        lambda row: round(row["DAYS_SINCE_LASTORDER"])
+                        == row["DAYS_SINCE_LASTORDER"]
+                    ),
+                ),
+                (
+                    ["QUANTITYORDERED", "PRICEEACH", "SALES"],
+                    lambda row: row["QUANTITYORDERED"] * row["PRICEEACH"]
+                    == row["SALES"],
+                ),
             ],
         ),
     ]
@@ -284,7 +327,7 @@ def assess_tuple_consistency(folder: Path, force=False):
         polluted_folder=folder,
         metrics=metrics,
         metric_configs=metric_configs,
-        datasets=["weather"],
+        datasets=["weather", "auto_sales"],
     )
 
 
