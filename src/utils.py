@@ -191,7 +191,7 @@ def get_necessary_folders(run_name: str | None = None):
     assert (
         pollution_folder.exists()
     ), f"Pollution folder {pollution_folder} does not exist."
-    polluted_folders = list(pollution_folder.glob("*"))
+    polluted_folders = [folder for folder in pollution_folder.glob("*") if folder.is_dir()]
 
     return sorted(polluted_folders) + [
         # ORIGINAL_DATA_PATH,
