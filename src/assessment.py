@@ -345,9 +345,9 @@ def assess_timeliness(folder: Path, force=False):
                     col: timeliness_heinrich_column_config(
                         decline_rate=0.1 / 365.25,
                         ingestion_date_column="ORDERDATE",
-                        to_datetime_kwargs={"dayfirst": True},
+                        to_datetime_kwargs={"dayfirst": True, "format": "mixed"},
                         simulated_assessment_date="2021-05-30",  # newest entry in auto sales data: 2020-05-30T22:00:00.000Z
-                        simulated_timestamp_precision="year",
+                        # simulated_timestamp_precision="year",
                     )
                     for col in ["ADDRESSLINE1", "CITY", "POSTALCODE", "COUNTRY"]
                 },
@@ -357,9 +357,31 @@ def assess_timeliness(folder: Path, force=False):
                         ingestion_date_column="last_modified",
                         to_datetime_kwargs={"format": "ISO8601"},
                         simulated_assessment_date="2026-01-01",  # newest entry in open library data: 2025-12-31T22:00:00.274823
-                        simulated_timestamp_precision="year",
+                        # simulated_timestamp_precision="year",
                     )
                     for col, stats in TOP_OL_COLUMNS
+                },
+                **{
+                    col: timeliness_heinrich_column_config(
+                        decline_rate=decline_rate,
+                        ingestion_date_column="Date",
+                        to_datetime_kwargs={"format": "mixed"},
+                        simulated_assessment_date="2017-07-01",  # newest entry in weather data: 2017-06-25
+                    )
+                    for col, decline_rate in [
+                        ("MinTemp", 1),
+                        ("MaxTemp", 1),
+                        ("Rainfall", 1),
+                        ("Temp9am", 24 / 6),
+                        ("Temp3pm", 24 / 18),
+                        ("WindGustSpeed", 1),
+                        ("WindSpeed9am", 24 / 6),
+                        ("WindSpeed3pm", 24 / 18),
+                        ("Pressure9am", 24 / 6),
+                        ("Pressure3pm", 24 / 18),
+                        ("Humidity9am", 24 / 6),
+                        ("Humidity3pm", 24 / 18),
+                    ]
                 },
             }
         ),
@@ -370,5 +392,4 @@ def assess_timeliness(folder: Path, force=False):
         polluted_folder=folder,
         metrics=metrics,
         metric_configs=metric_configs,
-        datasets=["auto_sales", "open_library"],
     )
