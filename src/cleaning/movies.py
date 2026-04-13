@@ -48,17 +48,23 @@ CONSISTENCY_RULES = {
     "Creator": [
         is_unpadded_nonempty_str,
         lambda value: re.match(PERSON_LIST_REGEX, value) is not None,
-        lambda value: any((word or "x")[0].isupper() for word in value.strip().split(" ")),
+        lambda value: any(
+            (word or "x")[0].isupper() for word in value.strip().split(" ")
+        ),
     ],
     "Actors": [
         is_unpadded_nonempty_str,
         lambda value: re.match(PERSON_LIST_REGEX, value) is not None,
-        lambda value: any((word or "x")[0].isupper() for word in value.strip().split(" ")),
+        lambda value: any(
+            (word or "x")[0].isupper() for word in value.strip().split(" ")
+        ),
     ],
     "Cast": [
         is_unpadded_nonempty_str,
         lambda value: re.match(PERSON_LIST_REGEX, value) is not None,
-        lambda value: any((word or "x")[0].isupper() for word in value.strip().split(" ")),
+        lambda value: any(
+            (word or "x")[0].isupper() for word in value.strip().split(" ")
+        ),
     ],
     "Language": [
         is_unpadded_nonempty_str,
@@ -70,13 +76,8 @@ CONSISTENCY_RULES = {
     ],
     "RatingValue": [is_number],
     "RatingCount": [is_number],
-    "ReviewCount": [
-        is_unpadded_nonempty_str,
-        lambda value: re.match(
-            r"^((\d[\d,]*\s(user,\d[\d,]*\scritic|user))|(\d[\d,]*\scritic)?)$", value
-        )
-        is not None,
-    ],  # e.g. 414 user,177 critic
+    "UserReviewCount": [is_number],
+    "CriticReviewCount": [is_number],
     "Genre": [
         is_unpadded_nonempty_str,
         lambda value: all(genre in ALLOWED_GENRES for genre in value.split(",")),
@@ -95,10 +96,36 @@ def clean_movies(original: pd.DataFrame) -> pd.DataFrame:
     # Drop null values
     cleaned = original.drop(columns=["Filming Locations"]).dropna()
 
+    # Drop rows not matching this format: 414 user,177 critic
+    valid_rows = cleaned["ReviewCount"].apply(
+        lambda value: re.match(r"^\d[\d,]*\suser,\d[\d,]*\scritic$", value)
+        is not None
+    )
+    print(
+        f"Dropping {len(cleaned) - valid_rows.sum()} rows due to invalid format in 'ReviewCount':", cleaned[~valid_rows]["ReviewCount"].tolist()
+    )
+    cleaned = cleaned[valid_rows]
+
     cleaned["RatingCount"] = cleaned["RatingCount"].astype(int)
 
+    # Split up ReviewCount into UserReviews and CriticReviews
+    cleaned["UserReviewCount"] = (
+        cleaned["ReviewCount"]
+        .apply(lambda s: s.split("user")[0].split(" ")[0].replace(",", ""))
+        .astype(int)
+    )
+    cleaned["CriticReviewCount"] = (
+        cleaned["ReviewCount"]
+        .apply(lambda s: s.split("user")[1].split(" ")[0].replace(",", ""))
+        .astype(int)
+    )
+    cleaned.drop(columns=["ReviewCount"], inplace=True)
+
     # Solve consistency violations
-    with open("patches_selected.json", "r") as f:
+    with open(
+        "/Users/jberndt/Documents/Masterarbeit/data-pollution/src/preprocessing/tmp/patches_selected.json",
+        "r",
+    ) as f:
         patches = json.load(f)
     violated_tuples = cleaned[
         cleaned["Release Date"].apply(
@@ -135,7 +162,11 @@ def clean_movies(original: pd.DataFrame) -> pd.DataFrame:
 
 def list_release_date_patches(original: pd.DataFrame):
     data = original.drop(columns=["Filming Locations"]).dropna()
-    patches = json.load(open("patches.json"))
+    patches = json.load(
+        open(
+            "/Users/jberndt/Documents/Masterarbeit/data-pollution/src/preprocessing/tmp/patches.json"
+        )
+    )
 
     violated_tuples = data[
         data["Release Date"].apply(
@@ -159,7 +190,10 @@ def list_release_date_patches(original: pd.DataFrame):
     print(
         f"Found {len(violated_tuples)} consistency violations in column 'Release Date'."
     )
-    with open("patches.json", "w") as f:
+    with open(
+        "/Users/jberndt/Documents/Masterarbeit/data-pollution/src/preprocessing/tmp/patches.json",
+        "w",
+    ) as f:
         json.dump(patches, f, indent=2)
 
 
@@ -178,7 +212,10 @@ def convert_country_code_to_name(code):
 
 
 def select_closest_release_date():
-    with open("patches.json", "r") as f:
+    with open(
+        "/Users/jberndt/Documents/Masterarbeit/data-pollution/src/preprocessing/tmp/patches.json",
+        "r",
+    ) as f:
         patches = json.load(f)
 
     for _, patch in patches.items():
@@ -211,7 +248,10 @@ def select_closest_release_date():
         else:
             patch["drop"] = True
 
-    with open("patches_selected.json", "w") as f:
+    with open(
+        "/Users/jberndt/Documents/Masterarbeit/data-pollution/src/preprocessing/tmp/patches_selected.json",
+        "w",
+    ) as f:
         json.dump(patches, f, indent=2)
 
 
