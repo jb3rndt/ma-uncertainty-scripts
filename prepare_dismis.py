@@ -48,15 +48,24 @@ def main():
             )
 
         for folder in get_necessary_folders():
+            possible_data_paths = [
+                folder / "completeness" / f"{dataset}.{type}.csv"
+                for type in ["polluted", "cleaned", "original"]
+                if (folder / "completeness" / f"{dataset}.{type}.csv").exists()
+            ]
+            assert (
+                len(possible_data_paths) == 1
+            ), f"Expected exactly one dataset file for {dataset} in {folder}, found: {possible_data_paths}"
+            dataset_path = possible_data_paths[0]
             if not (
-                folder / "completeness" / "precomputed_value_embeddings.json"
+                dataset_path.parent / f"{dataset_path.stem}_value_embeddings.json"
             ).exists():
                 precompute_value_embeddings(
                     model_name=EMBEDDING_MODEL,
                     llm_base_url=LLM_BASE_URL,
                     llm_api_key="placeholder",
                     datasets_and_types=(
-                        str(folder / "completeness" / f"{dataset}.polluted.csv"),
+                        str(dataset_path),
                         str(dataset_types_path),
                     ),
                 )
