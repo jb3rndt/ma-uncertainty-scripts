@@ -173,12 +173,6 @@ def location_is_at_end(value: str) -> bool:
 
 
 def assess_consistency(folder: Path, force=False):
-    if (folder / "results" / "dq_results.csv").exists() and not force:
-        print(
-            f"Results file {(folder / 'results' / 'dq_results.csv').absolute()} already exists. Skipping."
-        )
-        return folder / "results"
-
     comma_delimited_checks: List[Callable[[Any], bool]] = [
         lambda value: notna(value) and value.strip() == value,
         lambda value: notna(value)
@@ -254,16 +248,11 @@ def assess_consistency(folder: Path, force=False):
         polluted_folder=folder,
         metrics=metrics,
         metric_configs=metric_configs,
+        force=force,
     )
 
 
 def assess_tuple_consistency(folder: Path, force=False):
-    if (folder / "results" / "dq_results.csv").exists() and not force:
-        print(
-            f"Results file {(folder / 'results' / 'dq_results.csv').absolute()} already exists. Skipping."
-        )
-        return folder / "results"
-
     metrics = [consistency_ruleBasedPipino.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         consistency_ruleBasedPipino_config(
@@ -318,6 +307,7 @@ def assess_tuple_consistency(folder: Path, force=False):
                     lambda row: row["QUANTITYORDERED"] * row["PRICEEACH"]
                     == row["SALES"],
                 ),
+                (["RatingValue", "RatingCount"], lambda row: try_is_between(row["RatingValue"], 0, 10)),
             ],
         ),
     ]
@@ -327,17 +317,11 @@ def assess_tuple_consistency(folder: Path, force=False):
         polluted_folder=folder,
         metrics=metrics,
         metric_configs=metric_configs,
-        datasets=["weather", "auto_sales"],
+        force=force,
     )
 
 
 def assess_completeness(folder: Path, force=False):
-    if (folder / "results").exists() and not force:
-        print(
-            f"Results folder {(folder / 'results').absolute()} already exists. SKIPPING!"
-        )
-        return folder / "results"
-
     return execute_run(
         results_folder=folder / "results",
         polluted_folder=folder,
@@ -349,16 +333,11 @@ def assess_completeness(folder: Path, force=False):
             completeness_nullAndDMVRatio_config(),
             completeness_nullRatio_config(),
         ],
+        force=force,
     )
 
 
 def assess_correctness(folder: Path, force=False):
-    if (folder / "results").exists() and not force:
-        print(
-            f"Results folder {(folder / 'results').absolute()} already exists. SKIPPING!"
-        )
-        return folder / "results"
-
     return execute_run(
         results_folder=folder / "results",
         polluted_folder=folder,
@@ -370,16 +349,11 @@ def assess_correctness(folder: Path, force=False):
                 superset_file_path=CLEANED_DATA_PATH / "weather.csv",
             )
         ],
+        force=force,
     )
 
 
 def assess_timeliness(folder: Path, force=False):
-    if (folder / "results").exists() and not force:
-        print(
-            f"Results folder {(folder / 'results').absolute()} already exists. SKIPPING!"
-        )
-        return folder / "results"
-
     metrics = [timeliness_heinrich.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         timeliness_heinrich_config(
@@ -412,18 +386,18 @@ def assess_timeliness(folder: Path, force=False):
                         simulated_assessment_date="2017-07-01",  # newest entry in weather data: 2017-06-25
                     )
                     for col, decline_rate in [
-                        ("MinTemp", 1),
-                        ("MaxTemp", 1),
-                        ("Rainfall", 1),
-                        ("Temp9am", 24 / 6),
-                        ("Temp3pm", 24 / 18),
-                        ("WindGustSpeed", 1),
-                        ("WindSpeed9am", 24 / 6),
-                        ("WindSpeed3pm", 24 / 18),
-                        ("Pressure9am", 24 / 6),
-                        ("Pressure3pm", 24 / 18),
-                        ("Humidity9am", 24 / 6),
-                        ("Humidity3pm", 24 / 18),
+                        ("MinTemp", 1 / 30),
+                        ("MaxTemp", 1 / 30),
+                        ("Rainfall", 1 / 30),
+                        ("Temp9am", (24 / 6) / 30),
+                        ("Temp3pm", (24 / 18) / 30),
+                        ("WindGustSpeed", 1 / 30),
+                        ("WindSpeed9am", (24 / 6) / 30),
+                        ("WindSpeed3pm", (24 / 18) / 30),
+                        ("Pressure9am", (24 / 6) / 30),
+                        ("Pressure3pm", (24 / 18) / 30),
+                        ("Humidity9am", (24 / 6) / 30),
+                        ("Humidity3pm", (24 / 18) / 30),
                     ]
                 },
             }
@@ -435,4 +409,5 @@ def assess_timeliness(folder: Path, force=False):
         polluted_folder=folder,
         metrics=metrics,
         metric_configs=metric_configs,
+        force=force,
     )

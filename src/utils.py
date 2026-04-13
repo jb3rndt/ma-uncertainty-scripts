@@ -49,7 +49,12 @@ def execute_run(
     metrics: List[str],
     metric_configs: List[str | None | MetricConfig],
     datasets: List[DSLiteral] = datasets,
+    force: bool = False,
 ) -> Path | None:
+    if results_folder.exists() and not force:
+        print(f"Results folder {results_folder.absolute()} already exists. SKIPPING!")
+        return results_folder
+
     try:
         start_time = datetime.datetime.now()
 
@@ -191,7 +196,9 @@ def get_necessary_folders(run_name: str | None = None):
     assert (
         pollution_folder.exists()
     ), f"Pollution folder {pollution_folder} does not exist."
-    polluted_folders = [folder for folder in pollution_folder.glob("*") if folder.is_dir()]
+    polluted_folders = [
+        folder for folder in pollution_folder.glob("*") if folder.is_dir()
+    ]
 
     return sorted(polluted_folders) + [
         # ORIGINAL_DATA_PATH,
