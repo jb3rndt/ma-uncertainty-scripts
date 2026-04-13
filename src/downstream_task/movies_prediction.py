@@ -23,10 +23,10 @@ def evaluate_classifier(
         test_size=config.test_size,
         random_state=random_state,
     )
-    X_train = data.loc[train_idx].drop("SALES", axis=1)
-    y_train = data.loc[train_idx]["SALES"]
-    X_test = cleaned_data.loc[test_idx].drop("SALES", axis=1)
-    y_test = cleaned_data.loc[test_idx]["SALES"]
+    X_train = data.loc[train_idx].drop("RatingValue", axis=1)
+    y_train = data.loc[train_idx]["RatingValue"]
+    X_test = cleaned_data.loc[test_idx].drop("RatingValue", axis=1)
+    y_test = cleaned_data.loc[test_idx]["RatingValue"]
 
     scaler = StandardScaler()
     scaler.fit(X_train)
@@ -49,12 +49,20 @@ def evaluate_classifier(
     return np.sqrt(mean_squared_error(y_test, y_pred))
 
 
-def evaluate_auto_sales_prediction(config: RegressionConfig):
+def evaluate_movies_prediction(config: RegressionConfig):
     random_state = np.random.RandomState(config.random_seed)
 
     cleaned_data, polluted_data, polluted_dq, polluted_certainty = prepare_data(
-        config, "auto_sales"
+        config, "movies"
     )
+
+    def transform_data(data: pd.DataFrame) -> pd.DataFrame:
+        data = data.copy()
+        data["RatingValue"] = data["RatingValue"] * 100
+        return data
+
+    cleaned_data = transform_data(cleaned_data)
+    polluted_data = transform_data(polluted_data)
 
     measurements: List[Dict[Literal["data", "score", "run", "threshold"], Any]] = []
 

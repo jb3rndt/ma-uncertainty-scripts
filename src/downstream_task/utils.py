@@ -11,7 +11,8 @@ def prepare_data(config: RegressionConfig, dataset: str):
 
     cleaned_results = df_raw[
         (df_raw["dataset"] == dataset)
-        & (df_raw["metric"] == "completeness_nullAndDMVRatio")
+        & (df_raw["metric"] == "consistency_ruleBasedPipino")
+        & (df_raw["dimension"] == "consistency_tuple")
         & (df_raw["type"] == "cleaned")
     ]
     polluted_results = df_raw[
@@ -23,11 +24,13 @@ def prepare_data(config: RegressionConfig, dataset: str):
         & (df_raw["pollution_rate"] == 0.35)
     ]
 
-    cleaned_data = pd.DataFrame(
-        {res["column"]: res["result"].data for _, res in cleaned_results.iterrows()}
-    )[config.cols]
-
+    assert len(cleaned_results) == 1, cleaned_results
     assert len(polluted_results) == 1, polluted_results
+
+    cleaned_data = pd.DataFrame(
+        cleaned_results.iloc[0]["result"].data,
+        columns=cleaned_results.iloc[0]["raw_column"].split(","),
+    )[config.cols]
 
     polluted_data = pd.DataFrame(
         polluted_results.iloc[0]["result"].data,
