@@ -29,6 +29,7 @@ def main():
         dataset_types_path = dataset_path.parent / f"{dataset}_types.json"
 
         if not example_dmvs_path.exists():
+            print(f"Generating example DMVs for {dataset} at {example_dmvs_path}...")
             generate_example_dmvs(
                 dataset_path,
                 LLM_MODEL,
@@ -38,8 +39,9 @@ def main():
             )
 
         if not (
-            Path(example_dmvs_path).parent / "precomputed_example_embeddings.json"
+            Path(example_dmvs_path).parent / f"{Path(example_dmvs_path).stem}.embeddings.json"
         ).exists():
+            print(f"Precomputing example embeddings for {dataset} at {example_dmvs_path}...")
             precompute_detection_example_embeddings(
                 model_name=EMBEDDING_MODEL,
                 llm_base_url=LLM_BASE_URL,
@@ -48,6 +50,9 @@ def main():
             )
 
         for folder in get_necessary_folders():
+            if "polluted" in str(folder) and "1.25p_EAR" not in str(folder):
+                continue
+
             possible_data_paths = [
                 folder / "completeness" / f"{dataset}.{type}.csv"
                 for type in ["polluted", "cleaned", "original"]
@@ -60,6 +65,7 @@ def main():
             if not (
                 dataset_path.parent / f"{dataset_path.stem}_value_embeddings.json"
             ).exists():
+                print(f"Precomputing value embeddings for {dataset} at {dataset_path}...")
                 precompute_value_embeddings(
                     model_name=EMBEDDING_MODEL,
                     llm_base_url=LLM_BASE_URL,

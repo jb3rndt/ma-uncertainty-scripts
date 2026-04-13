@@ -9,6 +9,7 @@ from metis.metric.completeness.completeness_nullAndDMVRatio import (
 )
 from metis.metric.completeness.completeness_nullAndDMVRatio_config import (
     completeness_nullAndDMVRatio_config,
+    completeness_nullAndDMVRatio_config_dismis,
 )
 from metis.metric.completeness.completeness_nullRatio import completeness_nullRatio
 from metis.metric.completeness.completeness_nullRatio_config import (
@@ -307,7 +308,10 @@ def assess_tuple_consistency(folder: Path, force=False):
                     lambda row: row["QUANTITYORDERED"] * row["PRICEEACH"]
                     == row["SALES"],
                 ),
-                (["RatingValue", "RatingCount"], lambda row: try_is_between(row["RatingValue"], 0, 10)),
+                (
+                    ["RatingValue", "RatingCount"],
+                    lambda row: try_is_between(row["RatingValue"], 0, 10),
+                ),
             ],
         ),
     ]
@@ -328,8 +332,88 @@ def assess_completeness(folder: Path, force=False):
         metrics=[
             completeness_nullAndDMVRatio.__name__,
             completeness_nullRatio.__name__,
+            completeness_nullAndDMVRatio.__name__,
         ],
         metric_configs=[
+            completeness_nullAndDMVRatio_config(
+                dismis_config_per_dataset={
+                    "MaxTemp": completeness_nullAndDMVRatio_config_dismis(
+                        value_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/polluted/20260329_160648/1.25p_EAR/completeness/weather.polluted_value_embeddings.json",
+                        example_dmvs_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/weather_example_dmvs_detection.json",
+                        example_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/weather_precomputed_example_embeddings.json",
+                        column_types={
+                            "Date": "date",
+                            "Location": "categorical",
+                            "MinTemp": "numeric",
+                            "MaxTemp": "numeric",
+                            "Rainfall": "numeric",
+                            "WindGustDir": "categorical",
+                            "WindGustSpeed": "numeric",
+                            "WindDir9am": "categorical",
+                            "WindDir3pm": "categorical",
+                            "WindSpeed9am": "numeric",
+                            "WindSpeed3pm": "numeric",
+                            "Humidity9am": "numeric",
+                            "Humidity3pm": "numeric",
+                            "Pressure9am": "numeric",
+                            "Pressure3pm": "numeric",
+                            "Temp9am": "numeric",
+                            "Temp3pm": "numeric",
+                            "RainToday": "categorical",
+                            "RainTomorrow": "categorical",
+                        },
+                    ),
+                    "ORDERNUMBER": completeness_nullAndDMVRatio_config_dismis(
+                        value_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/polluted/20260329_160648/1.25p_EAR/completeness/auto_sales.polluted_value_embeddings.json",
+                        example_dmvs_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/auto_sales_example_dmvs_detection.json",
+                        example_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/auto_sales_precomputed_example_embeddings.json",
+                        column_types={
+                            "ORDERNUMBER": "numeric",
+                            "QUANTITYORDERED": "numeric",
+                            "PRICEEACH": "numeric",
+                            "ORDERLINENUMBER": "numeric",
+                            "SALES": "numeric",
+                            "ORDERDATE": "date",
+                            "DAYS_SINCE_LASTORDER": "numeric",
+                            "STATUS": "categorical",
+                            "PRODUCTLINE": "categorical",
+                            "MSRP": "numeric",
+                            "PRODUCTCODE": "categorical",
+                            "CUSTOMERNAME": "text",
+                            "PHONE": "text",
+                            "ADDRESSLINE1": "text",
+                            "CITY": "text",
+                            "POSTALCODE": "text",
+                            "COUNTRY": "text",
+                            "CONTACTLASTNAME": "text",
+                            "CONTACTFIRSTNAME": "text",
+                            "DEALSIZE": "categorical",
+                        }
+                    ),
+                    "Id": completeness_nullAndDMVRatio_config_dismis(
+                        value_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/polluted/20260329_160648/1.25p_EAR/completeness/movies.polluted_value_embeddings.json",
+                        example_dmvs_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/movies_example_dmvs_detection.json",
+                        example_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/movies_precomputed_example_embeddings.json",
+                        column_types={
+                            "Id": "text",
+                            "Name": "text",
+                            "Release Date": "date",
+                            "Director": "text",
+                            "Creator": "text",
+                            "Actors": "text",
+                            "Cast": "text",
+                            "Language": "text",
+                            "Country": "text",
+                            "Duration": "text",
+                            "RatingValue": "numeric",
+                            "RatingCount": "numeric",
+                            "ReviewCount": "text",
+                            "Genre": "text",
+                            "Description": "text",
+                        }
+                    ),
+                }
+            ),
             completeness_nullAndDMVRatio_config(),
             completeness_nullRatio_config(),
         ],
