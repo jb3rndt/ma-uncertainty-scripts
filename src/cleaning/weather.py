@@ -3,9 +3,9 @@ import pandas as pd
 from src.assessment import (
     extract_number,
     is_number,
-    is_unpadded_nonempty_str,
     try_is_between,
 )
+from src.validation.strings import is_unpadded_nonempty_str
 
 TEMP_RULES = [
     lambda value: try_is_between(value, -10, 50),

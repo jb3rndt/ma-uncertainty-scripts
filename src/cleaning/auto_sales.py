@@ -6,8 +6,8 @@ from metis.utils.datetime.datetime_precision import determine_datetime_precision
 from src.assessment import (
     contains_expected_datetime_format,
     is_datetime,
-    is_unpadded_nonempty_str,
 )
+from src.validation.strings import is_unpadded_nonempty_str
 
 CONSISTENCY_RULES = {
     "ORDERNUMBER": [
