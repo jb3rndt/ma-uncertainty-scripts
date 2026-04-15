@@ -235,7 +235,9 @@ def assess_completeness(folder: Path, force=False):
             completeness_nullAndDMVRatio_config(
                 dismis_config_per_dataset={
                     "MaxTemp": completeness_nullAndDMVRatio_config_dismis(
-                        value_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/polluted/20260329_160648/1.25p_EAR/completeness/weather.polluted_value_embeddings.json",
+                        value_embeddings_path=str(
+                            folder / "weather.polluted_value_embeddings.json"
+                        ),
                         example_dmvs_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/weather_example_dmvs_detection.json",
                         example_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/weather_precomputed_example_embeddings.json",
                         column_types={
@@ -261,7 +263,9 @@ def assess_completeness(folder: Path, force=False):
                         },
                     ),
                     "ORDERNUMBER": completeness_nullAndDMVRatio_config_dismis(
-                        value_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/polluted/20260329_160648/1.25p_EAR/completeness/auto_sales.polluted_value_embeddings.json",
+                        value_embeddings_path=str(
+                            folder / "auto_sales.polluted_value_embeddings.json"
+                        ),
                         example_dmvs_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/auto_sales_example_dmvs_detection.json",
                         example_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/auto_sales_precomputed_example_embeddings.json",
                         column_types={
@@ -288,7 +292,9 @@ def assess_completeness(folder: Path, force=False):
                         },
                     ),
                     "Id": completeness_nullAndDMVRatio_config_dismis(
-                        value_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/polluted/20260329_160648/1.25p_EAR/completeness/movies.polluted_value_embeddings.json",
+                        value_embeddings_path=str(
+                            folder / "movies.polluted_value_embeddings.json"
+                        ),
                         example_dmvs_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/movies_example_dmvs_detection.json",
                         example_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/movies_precomputed_example_embeddings.json",
                         column_types={
