@@ -4,8 +4,6 @@ POLLUTION_RATES = [0.0125, 0.025, 0.05, 0.1, 0.2, 0.35, 0.5]
 ORIGINAL_DATA_PATH = Path("../data-pollution/data/original").absolute()
 CLEANED_DATA_PATH = Path("../data-pollution/data/cleaned").absolute()
 
-PERSON_NAME_REGEX = r"[\w\-\.\&']+(\s[\w\-\.\&']+)*"
-PERSON_LIST_REGEX = rf"^{PERSON_NAME_REGEX}(,{PERSON_NAME_REGEX})*$"
 # fmt: off
 ALLOWED_GENRES = ['Action', 'Adventure', 'Fantasy', 'Science Fiction', 'Crime', 'Drama', 'Thriller', 'Animation', 'Family', 'Western', 'Comedy', 'Romance', 'Horror', 'Mystery', 'History', 'War', 'Music', 'Documentary', 'Foreign', 'TV Movie',] # Acquired by listing all unique genres in the dataset
 ALLOWED_LANGUAGES = {'hy', 'xh', 'bs', 'cs', 'it', 'th', 'nl', 'hi', 'km', 'gd', 'br', 'la', 'ml', 'ne', 'ur', 'eo', 'mn', 'da', 'sq', 'ce', 'pa', 'zu', 'am', 'en', 'tr', 'yi', 'ro', 'sr', 'ky', 'bn', 'si', 'vi', 'bm', 'fa', 'ar', 'af', 'id', 'de', 'el', 'hu', 'st', 'es', 'ja', 'pl', 'ko', 'kw', 'ga', 'uk', 'ru', 'he', 'is', 'te', 'iu', 'nb', 'ka', 'no', 'tl', 'nv', 'fr', 'sv', 'zh', 'co', 'pt', 'hr', 'fi', 'bo', 'cy', 'sl', 'ku', 'et', 'bg', 'ny', 'mi', 'ps', 'ca', 'so', 'wo', 'to', 'ta', 'dz', 'cn', 'sk', 'sw', 'kk', 'gl', 'sh'} # Acquired by listing all unique languages in the dataset

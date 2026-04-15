@@ -91,6 +91,7 @@ def clean_movies(original: pd.DataFrame) -> pd.DataFrame:
     cleaned = cleaned[cleaned["revenue"] > 0]
     cleaned = cleaned[cleaned["budget"] > 0]
     cleaned = cleaned[cleaned["runtime"] > 0]
+    cleaned["runtime"] = cleaned["runtime"].astype(int)
 
     # print(
     #     set(

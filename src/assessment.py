@@ -31,72 +31,19 @@ from metis.metric.timeliness.timeliness_heinrich_config import (
     timeliness_heinrich_column_config,
     timeliness_heinrich_config,
 )
+from metis.utils.datetime.datetime_precision import determine_datetime_precision
 from src.constants import (
     ALLOWED_GENRES,
     CLEANED_DATA_PATH,
-    PERSON_LIST_REGEX,
     TOP_OL_COLUMNS,
 )
 from src.utils import execute_run
-
-NUMBER_REGEX = re.compile(r"^\-?\d+(\.\d+)?")
-
-
-def extract_number(value: str | float | int):
-    if isinstance(value, float) or isinstance(value, int):
-        return float(value)
-    match = NUMBER_REGEX.match(value)
-    if match:
-        return float(match.group(0))
-    return None
+from src.validation.dates import contains_expected_datetime_format, is_datetime
+from src.validation.numbers import extract_number, is_integer, is_number, try_is_between
 
 
 def notna(value: Any) -> bool:
     return pd.notna(value)
-
-
-def is_number(value: str) -> bool:
-    try:
-        float(value)
-        return True
-    except ValueError:
-        return False
-
-
-def is_integer(value: str | float | int) -> bool:
-    number = extract_number(value)
-    if number is None:
-        return False
-    return number.is_integer()
-
-
-def is_unpadded_nonempty_str(value: Any) -> bool:
-    return isinstance(value, str) and value.strip() == value and len(value) > 0
-
-
-def is_datetime(value: str, to_datetime_kwargs={}) -> bool:
-    try:
-        pd.to_datetime(value, **to_datetime_kwargs)
-        return True
-    except (ValueError, TypeError):
-        return False
-
-
-def contains_expected_datetime_format(value: str, format: str) -> bool:
-    try:
-        pd.to_datetime(value, exact=False, format=format)
-        return True
-    except (ValueError, TypeError):
-        return False
-
-
-def try_is_between(
-    value: str | float | int, min_value: float, max_value: float
-) -> bool:
-    number = extract_number(value)
-    if number is None:
-        return False
-    return min_value <= number <= max_value
 
 
 temp_rules = [
@@ -125,63 +72,11 @@ humidity_rules = [
 ]
 
 
-def is_duration_format(value: str) -> bool:
-    parts = value.split(" ")
-    if len(parts) != 2:
-        return False
-    number_part = parts[0]
-    if not is_number(number_part):
-        return False
-    return True
-
-
-def is_minute_unit(value: str) -> bool:
-    parts = value.split(" ")
-    if len(parts) != 2:
-        return False
-    unit_part = parts[1]
-    return unit_part in ["min", "m"]
-
-
-def is_min_abbr(value: str) -> bool:
-    parts = value.split(" ")
-    if len(parts) != 2:
-        return False
-    unit_part = parts[1]
-    return unit_part == "min"
-
-
-def get_datetime_part(value: str) -> str:
-    location = re.search(r"\(.*\)", value)
-    if not location:
-        return value
-    return value.replace(location.group(0), "").strip()
-
-
-def is_datetime_with_location(value: str) -> bool:
-    location = re.search(r"\(.*\)", value)
-    if not location:
-        return False
-    dt_part = get_datetime_part(value)
-    return is_datetime(dt_part)
-
-
-def location_is_at_end(value: str) -> bool:
-    match = re.search(r"\(.*\)", value)
-    if not match:
-        return False
-    return match.end() == len(value)
-
-
 def assess_consistency(folder: Path, force=False):
-    comma_delimited_checks: List[Callable[[Any], bool]] = [
-        lambda value: notna(value) and value.strip() == value,
-        lambda value: notna(value)
-        and re.match(PERSON_LIST_REGEX, value.strip()) is not None,
-        # Detect false positives
-        lambda value: notna(value)
-        and all((word or "x")[0].isupper() for word in value.strip().split(" ")),
-    ]
+    is_unpadded_str: Callable[[Any], bool] = (
+        lambda value: notna(value) and value.strip() == value
+    )
+    no_semis = lambda value: notna(value) and ";" not in value
 
     metrics = [consistency_ruleBasedPipino.__name__]
     metric_configs: List[str | None | MetricConfig] = [
@@ -210,33 +105,30 @@ def assess_consistency(folder: Path, force=False):
                         and contains_expected_datetime_format(value.strip(), "%d/%m/%Y")
                     ),
                 ],
-                "Id": [
-                    lambda value: value.startswith("tt"),
-                    # lambda value: len(str(value)) == 9, trigger false negatives
-                    lambda value: is_number(value.replace("tt", "")),
+                "Actors": [is_unpadded_str],
+                "Cast": [is_unpadded_str],
+                "runtime": [
+                    is_unpadded_str,
+                    lambda value: notna(value) and is_number(value),
+                    lambda value: notna(value) and try_is_between(value, 0, 300),
                 ],
-                "Actors": comma_delimited_checks,
-                "Cast": comma_delimited_checks,
-                "Duration": [
-                    lambda value: notna(value) and value.strip() == value,
+                "release_date": [
                     lambda value: notna(value)
-                    and is_duration_format(value.strip())
-                    and is_minute_unit(value.strip()),
-                    # Trigger false negatives
-                    # lambda value: notna(value)
-                    # and is_duration_format(value.strip())
-                    # and is_min_abbr(value.strip()),
-                ],
-                "Release Date": [
-                    lambda value: notna(value) and is_datetime_with_location(value),
-                    lambda value: notna(value) and location_is_at_end(value),
+                    and contains_expected_datetime_format(value, "%Y-%m-%d"),
                     lambda value: notna(value)
-                    and contains_expected_datetime_format(
-                        get_datetime_part(value), "%d %B %Y"  # e.g., "25 December 2020"
-                    ),
+                    and determine_datetime_precision(value) == "day",
                 ],
-                "Genre": [
-                    *comma_delimited_checks,
+                "keywords": [
+                    is_unpadded_str,
+                    no_semis,
+                ],
+                "production_companies": [
+                    is_unpadded_str,
+                    no_semis,
+                ],
+                "genres": [
+                    is_unpadded_str,
+                    no_semis,
                     lambda value: notna(value)
                     and all(genre in ALLOWED_GENRES for genre in value.split(",")),
                 ],
@@ -309,8 +201,13 @@ def assess_tuple_consistency(folder: Path, force=False):
                     == row["SALES"],
                 ),
                 (
-                    ["RatingValue", "RatingCount"],
-                    lambda row: try_is_between(row["RatingValue"], 0, 10),
+                    ["vote_average", "vote_count"],
+                    lambda row: try_is_between(row["vote_average"], 0, 10),
+                ),
+                (["runtime"], lambda row: try_is_between(row["runtime"], 0, 300)),
+                (
+                    ["revenue", "budget"],
+                    lambda row: row["revenue"] - row["budget"] < 1e8,
                 ),
             ],
         ),
@@ -388,29 +285,32 @@ def assess_completeness(folder: Path, force=False):
                             "CONTACTLASTNAME": "text",
                             "CONTACTFIRSTNAME": "text",
                             "DEALSIZE": "categorical",
-                        }
+                        },
                     ),
                     "Id": completeness_nullAndDMVRatio_config_dismis(
                         value_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/polluted/20260329_160648/1.25p_EAR/completeness/movies.polluted_value_embeddings.json",
                         example_dmvs_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/movies_example_dmvs_detection.json",
                         example_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/movies_precomputed_example_embeddings.json",
                         column_types={
-                            "Id": "text",
-                            "Name": "text",
-                            "Release Date": "date",
-                            "Director": "text",
-                            "Creator": "text",
-                            "Actors": "text",
-                            "Cast": "text",
-                            "Language": "text",
-                            "Country": "text",
-                            "Duration": "text",
-                            "RatingValue": "numeric",
-                            "RatingCount": "numeric",
-                            "ReviewCount": "text",
-                            "Genre": "text",
-                            "Description": "text",
-                        }
+                            "id": "numeric",
+                            "budget": "numeric",
+                            "genres": "text",
+                            "keywords": "text",
+                            "original_language": "categorical",
+                            "original_title": "categorical",
+                            "overview": "text",
+                            "popularity": "numeric",
+                            "production_companies": "text",
+                            "production_countries": "text",
+                            "release_date": "date",
+                            "revenue": "numeric",
+                            "runtime": "numeric",
+                            "spoken_languages": "text",
+                            "status": "categorical",
+                            "title": "text",
+                            "vote_average": "numeric",
+                            "vote_count": "numeric",
+                        },
                     ),
                 }
             ),
