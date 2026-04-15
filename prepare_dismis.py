@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from metis.dismis.preparation.generate_example_dmvs import generate_example_dmvs
@@ -7,6 +8,7 @@ from metis.dismis.preparation.precompute_detection_example_embeddings import (
 from metis.dismis.preparation.precompute_value_embeddings import (
     precompute_value_embeddings,
 )
+from src.constants import CLEANED_DATA_PATH
 from src.utils import get_necessary_folders
 
 LLM_MODEL = "qwen3:8b"
@@ -39,9 +41,12 @@ def main():
             )
 
         if not (
-            Path(example_dmvs_path).parent / f"{Path(example_dmvs_path).stem}.embeddings.json"
+            Path(example_dmvs_path).parent
+            / f"{Path(example_dmvs_path).stem}.embeddings.json"
         ).exists():
-            print(f"Precomputing example embeddings for {dataset} at {example_dmvs_path}...")
+            print(
+                f"Precomputing example embeddings for {dataset} at {example_dmvs_path}..."
+            )
             precompute_detection_example_embeddings(
                 model_name=EMBEDDING_MODEL,
                 llm_base_url=LLM_BASE_URL,
@@ -49,23 +54,38 @@ def main():
                 json_files=str(example_dmvs_path),
             )
 
+        cleaned_value_embeddings_path = (
+            CLEANED_DATA_PATH
+            / "completeness"
+            / f"{dataset}.cleaned_value_embeddings.json"
+        )
+        if not cleaned_value_embeddings_path.exists():
+            print(
+                f"Precomputing cleaned value embeddings for {dataset} at {CLEANED_DATA_PATH}..."
+            )
+            precompute_value_embeddings(
+                model_name=EMBEDDING_MODEL,
+                llm_base_url=LLM_BASE_URL,
+                llm_api_key="placeholder",
+                datasets_and_types=(
+                    str(dataset_path),
+                    str(dataset_types_path),
+                ),
+            )
+
+        cached_embeddings = json.load(open(cleaned_value_embeddings_path, "r"))
+
         for folder in get_necessary_folders():
-            if "polluted" in str(folder) and "1.25p_EAR" not in str(folder):
+            if "ECAR" not in str(folder):
                 continue
 
-            possible_data_paths = [
-                folder / "completeness" / f"{dataset}.{type}.csv"
-                for type in ["polluted", "cleaned", "original"]
-                if (folder / "completeness" / f"{dataset}.{type}.csv").exists()
-            ]
-            assert (
-                len(possible_data_paths) == 1
-            ), f"Expected exactly one dataset file for {dataset} in {folder}, found: {possible_data_paths}"
-            dataset_path = possible_data_paths[0]
-            if not (
-                dataset_path.parent / f"{dataset_path.stem}_value_embeddings.json"
-            ).exists():
-                print(f"Precomputing value embeddings for {dataset} at {dataset_path}...")
+            value_embeddings_path = (
+                folder / "completeness" / f"{dataset}.polluted_value_embeddings.json"
+            )
+            if not value_embeddings_path.exists():
+                print(
+                    f"Precomputing value embeddings for {dataset} at {value_embeddings_path}..."
+                )
                 precompute_value_embeddings(
                     model_name=EMBEDDING_MODEL,
                     llm_base_url=LLM_BASE_URL,
@@ -74,6 +94,7 @@ def main():
                         str(dataset_path),
                         str(dataset_types_path),
                     ),
+                    cached_embeddings=cached_embeddings,
                 )
 
 
