@@ -21,13 +21,13 @@ def evaluate_classifier(
     train_idx, test_idx = train_test_split(
         data.index,
         test_size=config.test_size,
-        stratify=cleaned_data.loc[data.index]["RainTomorrow"],
+        stratify=cleaned_data.loc[data.index][config.target_col],
         random_state=random_state,
     )
-    X_train = data.loc[train_idx].drop("RainTomorrow", axis=1)
-    y_train = data.loc[train_idx]["RainTomorrow"]
-    X_test = cleaned_data.loc[test_idx].drop("RainTomorrow", axis=1)
-    y_test = cleaned_data.loc[test_idx]["RainTomorrow"]
+    X_train = data.loc[train_idx].drop(config.target_col, axis=1)
+    y_train = data.loc[train_idx][config.target_col]
+    X_test = cleaned_data.loc[test_idx].drop(config.target_col, axis=1)
+    y_test = cleaned_data.loc[test_idx][config.target_col]
 
     scaler = StandardScaler()
     scaler.fit(X_train)
@@ -61,8 +61,7 @@ def evaluate_weather_rain_prediction(config: RegressionConfig):
     def transform(data):
         data["RainToday"] = data["RainToday"].map({"Yes": 1, "No": 0})
         data["RainTomorrow"] = data["RainTomorrow"].map({"Yes": 1, "No": 0})
-        # ["MaxTemp","MinTemp","Pressure3pm","Pressure9am","RainTomorrow","WindGustSpeed"]
-        return data[config.cols]
+        return data
 
     cleaned_data = transform(cleaned_data)
     polluted_data = transform(polluted_data)

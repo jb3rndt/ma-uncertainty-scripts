@@ -23,10 +23,10 @@ def evaluate_classifier(
         test_size=config.test_size,
         random_state=random_state,
     )
-    X_train = data.loc[train_idx].drop("SALES", axis=1)
-    y_train = data.loc[train_idx]["SALES"]
-    X_test = cleaned_data.loc[test_idx].drop("SALES", axis=1)
-    y_test = cleaned_data.loc[test_idx]["SALES"]
+    X_train = data.loc[train_idx].drop(config.target_col, axis=1)
+    y_train = data.loc[train_idx][config.target_col]
+    X_test = cleaned_data.loc[test_idx].drop(config.target_col, axis=1)
+    y_test = cleaned_data.loc[test_idx][config.target_col]
 
     scaler = StandardScaler()
     scaler.fit(X_train)

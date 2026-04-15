@@ -4,7 +4,8 @@ from typing import List
 
 @dataclasses.dataclass
 class RegressionConfig:
-    cols: List[str]
+    feature_cols: List[str]
+    target_col: str
     n_runs: int = 10
     random_seed: int | None = None
     learning_rate: float = 0.2

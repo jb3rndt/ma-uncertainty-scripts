@@ -30,12 +30,12 @@ def prepare_data(config: RegressionConfig, dataset: str):
     cleaned_data = pd.DataFrame(
         cleaned_results.iloc[0]["result"].data,
         columns=cleaned_results.iloc[0]["raw_column"].split(","),
-    )[config.cols]
+    )[config.feature_cols + [config.target_col]]
 
     polluted_data = pd.DataFrame(
         polluted_results.iloc[0]["result"].data,
         columns=polluted_results.iloc[0]["raw_column"].split(","),
-    )[config.cols]
+    )[config.feature_cols + [config.target_col]]
 
     polluted_dq = pd.Series(
         polluted_results.iloc[0]["result"].dq_result,

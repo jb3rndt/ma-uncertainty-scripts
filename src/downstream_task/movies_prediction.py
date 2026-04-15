@@ -5,10 +5,51 @@ import pandas as pd
 from sklearn import ensemble
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder, StandardScaler
 
 from src.downstream_task.config import RegressionConfig
 from src.downstream_task.utils import eval_permutations, prepare_data
+
+
+def encode_data(cleaned_data: pd.DataFrame, polluted_data: pd.DataFrame):
+    one_hot_cols = ["original_language", "status"]
+
+    enc = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+    enc.fit(polluted_data[one_hot_cols])
+    encoded_cleaned_data = pd.DataFrame(
+        np.array(enc.transform(cleaned_data[one_hot_cols])),
+        columns=enc.get_feature_names_out(cleaned_data[one_hot_cols].columns),
+        index=cleaned_data.index,
+    ).join(cleaned_data.drop(one_hot_cols, axis=1))
+    encoded_polluted_data = pd.DataFrame(
+        np.array(enc.transform(polluted_data[one_hot_cols])),
+        columns=enc.get_feature_names_out(polluted_data[one_hot_cols].columns),
+        index=polluted_data.index,
+    ).join(polluted_data.drop(one_hot_cols, axis=1))
+
+    multi_label_cols = ["genres", "production_countries"]
+
+    for col in multi_label_cols:
+        encoded_cleaned_data[col] = encoded_cleaned_data[col].apply(
+            lambda x: x.split(",")
+        )
+        encoded_polluted_data[col] = encoded_polluted_data[col].apply(
+            lambda x: x.split(",")
+        )
+        mlb = MultiLabelBinarizer()
+        mlb.fit(encoded_polluted_data[col])
+        encoded_cleaned_data = pd.DataFrame(
+            np.array(mlb.transform(encoded_cleaned_data[col])),
+            columns=mlb.classes_,
+            index=encoded_cleaned_data.index,
+        ).join(encoded_cleaned_data.drop(col, axis=1))
+        encoded_polluted_data = pd.DataFrame(
+            np.array(mlb.transform(encoded_polluted_data[col])),
+            columns=mlb.classes_,
+            index=encoded_polluted_data.index,
+        ).join(encoded_polluted_data.drop(col, axis=1))
+
+    return encoded_cleaned_data, encoded_polluted_data
 
 
 def evaluate_classifier(
@@ -22,16 +63,10 @@ def evaluate_classifier(
         test_size=config.test_size,
         random_state=random_state,
     )
-    X_train = data.loc[train_idx].drop("RatingValue", axis=1)
-    y_train = data.loc[train_idx]["RatingValue"]
-    X_test = cleaned_data.loc[test_idx].drop("RatingValue", axis=1)
-    y_test = cleaned_data.loc[test_idx]["RatingValue"]
-
-    scaler = StandardScaler()
-    scaler.fit(X_train)
-
-    X_train = scaler.transform(X_train)
-    X_test = scaler.transform(X_test)
+    X_train = data.loc[train_idx].drop(config.target_col, axis=1)
+    y_train = data.loc[train_idx][config.target_col]
+    X_test = cleaned_data.loc[test_idx].drop(config.target_col, axis=1)
+    y_test = cleaned_data.loc[test_idx][config.target_col]
 
     clf = ensemble.GradientBoostingRegressor(
         n_estimators=config.n_estimators,
@@ -45,28 +80,29 @@ def evaluate_classifier(
     clf.fit(X_train, y_train)
 
     y_pred = clf.predict(X_test)
+
+    # y_pred = np.full_like(y_test, y_train.mean())
     return np.sqrt(mean_squared_error(y_test, y_pred))
 
 
 def evaluate_movies_prediction(config: RegressionConfig):
     random_state = np.random.RandomState(config.random_seed)
 
-    cleaned_data, polluted_data, polluted_dq, polluted_certainty = prepare_data(
-        config, "movies"
-    )
+    cleaned_data = pd.read_csv(
+        "/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/tmdb_movies.csv"
+    )[config.feature_cols + [config.target_col]]
+    polluted_data = cleaned_data.copy()
 
-    def transform_data(data: pd.DataFrame) -> pd.DataFrame:
-        data = data.copy()
-        data["RatingValue"] = data["RatingValue"] * 100
-        return data
-
-    cleaned_data = transform_data(cleaned_data)
-    polluted_data = transform_data(polluted_data)
+    cleaned_data, polluted_data = encode_data(cleaned_data, polluted_data)
 
     measurements: List[Dict[Literal["data", "score", "run", "threshold"], Any]] = []
 
     for data, key, n, t in eval_permutations(
-        config, cleaned_data, polluted_data, polluted_dq, polluted_certainty
+        config,
+        cleaned_data,
+        polluted_data,
+        pd.Series(1, index=polluted_data.index),
+        pd.Series(1, index=polluted_data.index),
     ):
         measurements.append(
             {
