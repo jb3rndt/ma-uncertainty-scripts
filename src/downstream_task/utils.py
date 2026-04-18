@@ -1,6 +1,5 @@
-from time import time
-
 import pandas as pd
+from tqdm import tqdm
 
 from src.downstream_task.config import RegressionConfig
 from src.utils import get_raw_results
@@ -54,15 +53,16 @@ def eval_permutations(
     polluted_dq: pd.Series,
     polluted_certainty: pd.Series,
 ):
+    progress = tqdm(
+        total=config.n_runs * (2 + 2 * len(config.thresholds)),
+        desc="Evaluating permutations",
+    )
     for n in range(config.n_runs):
-        run_start_time = time()
         for data, key in [(cleaned_data, "cleaned"), (polluted_data, "polluted")]:
             yield (data, key, n, None)
-        print(f"Completed run {n + 1} after {time() - run_start_time:.2f} seconds")
+            progress.update(1)
 
-    for i, t in enumerate(config.thresholds):
-        start_time = time()
-        print(f"[{i+1}/{len(config.thresholds)}] Running for threshold {t}...")
+    for t in config.thresholds:
         datasets = [
             (polluted_data.loc[polluted_dq >= t], "filtered_dq"),
             (
@@ -72,14 +72,9 @@ def eval_permutations(
         ]
 
         for n in range(config.n_runs):
-            run_start_time = time()
             for data, key in datasets:
                 if len(data) == 0:
+                    progress.update(1)
                     continue
                 yield (data, key, n, t)
-            print(
-                f"[{i+1}/{len(config.thresholds)}] Completed run {n + 1} after {time() - run_start_time:.2f} seconds"
-            )
-        print(
-            f"[{i+1}/{len(config.thresholds)}] Completed after {time() - start_time:.2f} seconds"
-        )
+                progress.update(1)

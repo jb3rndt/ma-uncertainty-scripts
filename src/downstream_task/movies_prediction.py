@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn import ensemble
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder, StandardScaler
+from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder
 
 from src.downstream_task.config import RegressionConfig
 from src.downstream_task.utils import eval_permutations, prepare_data
@@ -56,12 +56,12 @@ def evaluate_classifier(
     config: RegressionConfig,
     data: pd.DataFrame,
     cleaned_data: pd.DataFrame,
-    random_state: np.random.RandomState,
 ):
+    index = data.sample(frac=1, random_state=config.random_state).index
     train_idx, test_idx = train_test_split(
-        data.index,
+        index,
         test_size=config.test_size,
-        random_state=random_state,
+        random_state=config.random_state,
     )
     X_train = data.loc[train_idx].drop(config.target_col, axis=1)
     y_train = data.loc[train_idx][config.target_col]
@@ -75,7 +75,7 @@ def evaluate_classifier(
         max_depth=config.max_depth,
         max_leaf_nodes=config.max_leaf_nodes,
         min_samples_split=config.min_samples_split,
-        random_state=random_state,
+        random_state=config.random_state,
     )
     clf.fit(X_train, y_train)
 
@@ -86,8 +86,6 @@ def evaluate_classifier(
 
 
 def evaluate_movies_prediction(config: RegressionConfig):
-    random_state = np.random.RandomState(config.random_seed)
-
     (
         cleaned_data,
         polluted_data,
@@ -109,7 +107,7 @@ def evaluate_movies_prediction(config: RegressionConfig):
         measurements.append(
             {
                 "data": key,
-                "score": evaluate_classifier(config, data, cleaned_data, random_state),
+                "score": evaluate_classifier(config, data, cleaned_data),
                 "run": n,
                 "threshold": t,
             }
