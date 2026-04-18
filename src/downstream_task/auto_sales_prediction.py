@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from src.downstream_task.config import RegressionConfig
-from src.downstream_task.utils import eval_permutations, prepare_data
+from src.downstream_task.utils import generate_eval_permutations, prepare_data
 
 
 def evaluate_classifier(
@@ -54,10 +54,17 @@ def evaluate_auto_sales_prediction(config: RegressionConfig):
         config, "auto_sales"
     )
 
-    measurements: List[Dict[Literal["data", "score", "run", "threshold"], Any]] = []
+    measurements: List[
+        Dict[Literal["data", "score", "run", "threshold", "dataset_size"], Any]
+    ] = []
 
-    for data, key, n, t in eval_permutations(
-        config, cleaned_data, polluted_data, polluted_dq, polluted_certainty
+    for data, key, n, t in generate_eval_permutations(
+        config,
+        cleaned_data,
+        polluted_data,
+        polluted_dq,
+        polluted_certainty,
+        dataset_size=1328,
     ):
         measurements.append(
             {
@@ -65,6 +72,7 @@ def evaluate_auto_sales_prediction(config: RegressionConfig):
                 "score": evaluate_classifier(config, data, cleaned_data),
                 "run": n,
                 "threshold": t,
+                "dataset_size": len(data),
             }
         )
 

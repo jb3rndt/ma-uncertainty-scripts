@@ -46,12 +46,13 @@ def prepare_data(config: RegressionConfig, dataset: str):
     return cleaned_data, polluted_data, polluted_dq, polluted_certainty
 
 
-def eval_permutations(
+def generate_eval_permutations(
     config: RegressionConfig,
     cleaned_data: pd.DataFrame,
     polluted_data: pd.DataFrame,
     polluted_dq: pd.Series,
     polluted_certainty: pd.Series,
+    dataset_size: int | None = None,
 ):
     progress = tqdm(
         total=config.n_runs * (2 + 2 * len(config.thresholds)),
@@ -59,7 +60,8 @@ def eval_permutations(
     )
     for n in range(config.n_runs):
         for data, key in [(cleaned_data, "cleaned"), (polluted_data, "polluted")]:
-            yield (data, key, n, None)
+            size = min(dataset_size or len(data), len(data))
+            yield (data.sample(n=size, random_state=config.random_state), key, n, None)
             progress.update(1)
 
     for t in config.thresholds:
@@ -73,8 +75,14 @@ def eval_permutations(
 
         for n in range(config.n_runs):
             for data, key in datasets:
-                if len(data) == 0:
+                size = min(dataset_size or len(data), len(data))
+                if size == 0:
                     progress.update(1)
                     continue
-                yield (data, key, n, t)
+                yield (
+                    (data.sample(n=size, random_state=config.random_state)),
+                    key,
+                    n,
+                    t,
+                )
                 progress.update(1)

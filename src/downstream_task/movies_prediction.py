@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder
 
 from src.downstream_task.config import RegressionConfig
-from src.downstream_task.utils import eval_permutations, prepare_data
+from src.downstream_task.utils import generate_eval_permutations, prepare_data
 
 
 def encode_data(cleaned_data: pd.DataFrame, polluted_data: pd.DataFrame):
@@ -68,6 +68,12 @@ def evaluate_classifier(
     X_test = cleaned_data.loc[test_idx].drop(config.target_col, axis=1)
     y_test = cleaned_data.loc[test_idx][config.target_col]
 
+    # scaler = StandardScaler()
+    # scaler.fit(X_train)
+
+    # X_train = scaler.transform(X_train)
+    # X_test = scaler.transform(X_test)
+
     clf = ensemble.GradientBoostingRegressor(
         n_estimators=config.n_estimators,
         learning_rate=config.learning_rate,
@@ -95,14 +101,17 @@ def evaluate_movies_prediction(config: RegressionConfig):
 
     cleaned_data, polluted_data = encode_data(cleaned_data, polluted_data)
 
-    measurements: List[Dict[Literal["data", "score", "run", "threshold"], Any]] = []
+    measurements: List[
+        Dict[Literal["data", "score", "run", "threshold", "dataset_size"], Any]
+    ] = []
 
-    for data, key, n, t in eval_permutations(
+    for data, key, n, t in generate_eval_permutations(
         config,
         cleaned_data,
         polluted_data,
         polluted_dq,
         polluted_certainty,
+        dataset_size=1858,
     ):
         measurements.append(
             {
@@ -110,6 +119,7 @@ def evaluate_movies_prediction(config: RegressionConfig):
                 "score": evaluate_classifier(config, data, cleaned_data),
                 "run": n,
                 "threshold": t,
+                "dataset_size": len(data),
             }
         )
 

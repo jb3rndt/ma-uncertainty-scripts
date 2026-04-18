@@ -93,6 +93,7 @@ def plot_results(results_folder: Path, downstream_tasks: Dict[str, Tuple]):
     }
 
     fig, ax = plt.subplots()
+    # ax2 = ax.twinx()
     for i, (data, group) in enumerate(df.groupby("data")):
         mean_scores = group.groupby("threshold", dropna=False)["score"].mean()
         if all(mean_scores.index.isna()):
@@ -104,6 +105,11 @@ def plot_results(results_folder: Path, downstream_tasks: Dict[str, Tuple]):
             )
         else:
             mean_scores.plot(ax=ax, color=f"C{i}", label=f"{legend_labels[str(data)]}")
+
+        # if "dataset_size" in group.columns:
+        #     mean_dataset_size = group.groupby("threshold", dropna=False)["dataset_size"].mean()
+        #     mean_dataset_size.plot(ax=ax2, color=f"C{i}", linestyle=":", label=f"{legend_labels[str(data)]} (Dataset Size)")
+    # ax2.legend()
 
     ax.legend()
     ax.set_ylabel(labels["ylabel"])
