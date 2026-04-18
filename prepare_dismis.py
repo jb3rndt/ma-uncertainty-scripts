@@ -54,10 +54,12 @@ def main():
                 json_files=str(example_dmvs_path),
             )
 
+        cleaned_dataset_path = (
+            CLEANED_DATA_PATH / "completeness" / f"{dataset}.cleaned.csv"
+        )
         cleaned_value_embeddings_path = (
-            CLEANED_DATA_PATH
-            / "completeness"
-            / f"{dataset}.cleaned_value_embeddings.json"
+            cleaned_dataset_path.parent
+            / f"{cleaned_dataset_path.stem}_value_embeddings.json"
         )
         if not cleaned_value_embeddings_path.exists():
             print(
@@ -68,11 +70,12 @@ def main():
                 llm_base_url=LLM_BASE_URL,
                 llm_api_key="placeholder",
                 datasets_and_types=(
-                    str(dataset_path),
+                    str(cleaned_dataset_path),
                     str(dataset_types_path),
                 ),
             )
 
+        print(f"Loading cached embeddings from {cleaned_value_embeddings_path}")
         cached_embeddings = json.load(open(cleaned_value_embeddings_path, "r"))
 
         for folder in get_necessary_folders():
@@ -82,6 +85,7 @@ def main():
             value_embeddings_path = (
                 folder / "completeness" / f"{dataset}.polluted_value_embeddings.json"
             )
+            dataset_path = folder / "completeness" / f"{dataset}.polluted.csv"
             if not value_embeddings_path.exists():
                 print(
                     f"Precomputing value embeddings for {dataset} at {value_embeddings_path}..."
