@@ -4,14 +4,13 @@ from pathlib import Path
 from time import time
 
 import pandas as pd
-import seaborn as sns
-from matplotlib import pyplot as plt
 
 from src.downstream_task.auto_sales_prediction import evaluate_auto_sales_prediction
 from src.downstream_task.config import RegressionConfig
 from src.downstream_task.movies_prediction import evaluate_movies_prediction
 from src.downstream_task.weather_rain_prediction import evaluate_weather_rain_prediction
 
+xlabel = "Data Quality Threshold for Dataset Filtering"
 downstream_tasks = {
     "weather": (
         evaluate_weather_rain_prediction,
@@ -46,8 +45,8 @@ downstream_tasks = {
             target_col="RainTomorrow",
         ),
         {
-            "title": "Gradient Boosting Rain Prediction Performance on Different Parts of the Weather Dataset",
-            "xlabel": "Data Quality Threshold for Filtering",
+            "title": "Gradient Boosting Rain Prediction Performance on Different Subsets of the Weather Dataset",
+            "xlabel": xlabel,
             "ylabel": "F1 Score",
         },
     ),
@@ -67,8 +66,8 @@ downstream_tasks = {
             target_col="SALES",
         ),
         {
-            "title": "Gradient Boosting Sales Prediction Performance on Different Parts of the Auto Sales Dataset",
-            "xlabel": "Data Quality Threshold for Filtering",
+            "title": "Gradient Boosting Sales Prediction Performance on Different Subsets of the Auto Sales Dataset",
+            "xlabel": xlabel,
             "ylabel": "RMSE",
         },
     ),
@@ -97,8 +96,8 @@ downstream_tasks = {
             target_col="vote_average",
         ),
         {
-            "title": "Gradient Boosting Movie Rating Prediction Performance on Different Parts of the Movies Dataset",
-            "xlabel": "Data Quality Threshold for Filtering",
+            "title": "Gradient Boosting Movie Rating Prediction Performance on Different Subsets of the Movies Dataset",
+            "xlabel": xlabel,
             "ylabel": "RMSE",
         },
     ),
@@ -124,32 +123,6 @@ def run_downstream_task(task_name: str):
         indent=2,
     )
     return results_folder
-
-
-def plot_results(results_folder: Path):
-    sns.set_theme()
-
-    df = pd.read_csv(results_folder / "results.csv")
-
-    config = json.load(open(results_folder / "config.json"))
-    dataset = config.get("dataset")
-    _, _, labels = downstream_tasks[dataset]
-
-    fig, ax = plt.subplots()
-    for i, (data, group) in enumerate(df.groupby("data")):
-        mean_scores = group.groupby("threshold", dropna=False)["score"].mean()
-        if all(mean_scores.index.isna()):
-            ax.axhline(
-                mean_scores.iloc[0], color=f"C{i}", linestyle="--", label=f"{data}"
-            )
-        else:
-            mean_scores.plot(ax=ax, color=f"C{i}", label=f"{data}")
-
-    ax.legend()
-    ax.set_ylabel(labels["ylabel"])
-    ax.set_xlabel(labels["xlabel"])
-    fig.suptitle(labels["title"])
-    fig.savefig(results_folder / "plot.pdf", bbox_inches="tight")
 
 
 def main():
