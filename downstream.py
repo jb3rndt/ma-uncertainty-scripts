@@ -82,6 +82,7 @@ downstream_tasks = {
             max_depth=None,
             subsample=0.5,
             learning_rate=0.2,
+            n_runs=50,
             feature_cols=[
                 "budget",
                 "revenue",
