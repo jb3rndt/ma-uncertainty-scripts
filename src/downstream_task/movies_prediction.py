@@ -88,10 +88,12 @@ def evaluate_classifier(
 def evaluate_movies_prediction(config: RegressionConfig):
     random_state = np.random.RandomState(config.random_seed)
 
-    cleaned_data = pd.read_csv(
-        "/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/tmdb_movies.csv"
-    )[config.feature_cols + [config.target_col]]
-    polluted_data = cleaned_data.copy()
+    (
+        cleaned_data,
+        polluted_data,
+        polluted_dq,
+        polluted_certainty,
+    ) = prepare_data(config, "movies")
 
     cleaned_data, polluted_data = encode_data(cleaned_data, polluted_data)
 
@@ -101,8 +103,8 @@ def evaluate_movies_prediction(config: RegressionConfig):
         config,
         cleaned_data,
         polluted_data,
-        pd.Series(1, index=polluted_data.index),
-        pd.Series(1, index=polluted_data.index),
+        polluted_dq,
+        polluted_certainty,
     ):
         measurements.append(
             {

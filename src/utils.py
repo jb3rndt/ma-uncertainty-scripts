@@ -213,7 +213,8 @@ def load_raw_results(run_name: str | None = None):
         )
         for folder in get_necessary_folders(run_name)
         for dim_folder in folder.glob("*")
-        if (dim_folder / "results" / "raw_results.json").exists()
+        if dim_folder.is_dir()
+        and (dim_folder / "results" / "raw_results.json").exists()
     }
 
 
@@ -246,11 +247,12 @@ def flatten_raw_results(raw_results: dict) -> pd.DataFrame:
 def load_evaluations(run_name: str | None = None):
     return {
         (dim_folder.name, folder.name): json.load(
-            (dim_folder / "results" / "raw_results.json").open()
+            (dim_folder / "results" / "evaluations.json").open()
         )
         for folder in get_necessary_folders(run_name)
         for dim_folder in folder.glob("*")
-        if (dim_folder / "results" / "evaluations.json").exists()
+        if dim_folder.is_dir()
+        and (dim_folder / "results" / "evaluations.json").exists()
     }
 
 

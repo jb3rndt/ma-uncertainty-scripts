@@ -1,6 +1,8 @@
 import dataclasses
 from typing import List
 
+import numpy as np
+
 
 @dataclasses.dataclass
 class RegressionConfig:
@@ -18,3 +20,6 @@ class RegressionConfig:
     thresholds: List[float] = dataclasses.field(
         default_factory=lambda: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     )
+
+    def __post_init__(self):
+        self.random_state = np.random.RandomState(self.random_seed)

@@ -108,7 +108,7 @@ def assess_consistency(folder: Path, force=False):
                 "Actors": [is_unpadded_str],
                 "Cast": [is_unpadded_str],
                 "runtime": [
-                    is_unpadded_str,
+                    lambda value: notna(value) and str(value).strip() == str(value),
                     lambda value: notna(value) and is_number(value),
                     lambda value: notna(value) and try_is_between(value, 0, 300),
                 ],
@@ -201,7 +201,7 @@ def assess_tuple_consistency(folder: Path, force=False):
                     == row["SALES"],
                 ),
                 (
-                    ["vote_average", "vote_count"],
+                    ["vote_average"],
                     lambda row: try_is_between(row["vote_average"], 0, 10),
                 ),
                 (["runtime"], lambda row: try_is_between(row["runtime"], 0, 300)),
@@ -209,6 +209,7 @@ def assess_tuple_consistency(folder: Path, force=False):
                     ["revenue", "budget"],
                     lambda row: row["revenue"] - row["budget"] < 1e8,
                 ),
+                (["popularity"], lambda row: row["popularity"] > 0),
             ],
         ),
     ]

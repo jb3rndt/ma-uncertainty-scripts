@@ -95,7 +95,6 @@ downstream_tasks = {
                 "production_countries",
             ],
             target_col="vote_average",
-            thresholds=[0.5],
         ),
         {
             "title": "Gradient Boosting Movie Rating Prediction Performance on Different Parts of the Movies Dataset",
