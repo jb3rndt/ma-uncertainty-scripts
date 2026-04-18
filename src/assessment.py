@@ -151,8 +151,6 @@ def assess_tuple_consistency(folder: Path, force=False):
         consistency_ruleBasedPipino_config(
             tuple_rules=[
                 (["MinTemp", "MaxTemp"], lambda row: row["MinTemp"] <= row["MaxTemp"]),
-                # (["MinTemp", "Temp9am", "MaxTemp"], lambda row: row["MinTemp"] <= row["Temp9am"] <= row["MaxTemp"]),
-                # (["MinTemp", "Temp3pm", "MaxTemp"], lambda row: row["MinTemp"] <= row["Temp3pm"] <= row["MaxTemp"]),
                 # Correct unit bounds
                 (
                     [
@@ -184,9 +182,9 @@ def assess_tuple_consistency(folder: Path, force=False):
                     and row["RainToday"] == "No",
                 ),
                 (
-                    ["PRICEEACH", "SALES"],
-                    lambda row: try_is_between(row["PRICEEACH"], 20, 300)
-                    and try_is_between(row["SALES"], 400, 14000),
+                    ["PRICEEACH", "MSRP", "SALES"],
+                    lambda row: row["PRICEEACH"] <= row["SALES"]
+                    and row["MSRP"] <= row["SALES"],
                 ),
                 (
                     ["DAYS_SINCE_LASTORDER"],
@@ -206,10 +204,9 @@ def assess_tuple_consistency(folder: Path, force=False):
                 ),
                 (["runtime"], lambda row: try_is_between(row["runtime"], 0, 300)),
                 (
-                    ["revenue", "budget"],
-                    lambda row: row["revenue"] - row["budget"] < 1e8,
+                    ["popularity"],
+                    lambda row: round(row["popularity"], 6) == row["popularity"],
                 ),
-                (["popularity"], lambda row: row["popularity"] > 0),
             ],
         ),
     ]
