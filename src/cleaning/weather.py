@@ -1,6 +1,7 @@
 import pandas as pd
 
-from src.assessment import (
+from src.validation.dates import contains_expected_datetime_format
+from src.validation.numbers import (
     extract_number,
     is_number,
     try_is_between,
@@ -32,12 +33,16 @@ DIRECTIONS = [
 ]
 
 
-CONSISTENCY_RULES = {
+WEATHER_ORIGINAL_CONSISTENCY_RULES = {
+    "Date": [
+        is_unpadded_nonempty_str,
+        lambda value: contains_expected_datetime_format(value.strip(), "%Y-%m-%d"),
+    ],
     "Location": [
         is_unpadded_nonempty_str,
     ],
-    "MinTemp": [*TEMP_RULES],
-    "MaxTemp": [*TEMP_RULES],
+    "MinTemp": TEMP_RULES,
+    "MaxTemp": TEMP_RULES,
     "Rainfall": [
         lambda value: isinstance(value, float),
         lambda value: value >= 0,
@@ -103,9 +108,11 @@ CONSISTENCY_TUPLE_RULES = [
 
 def clean_weather(data: pd.DataFrame) -> pd.DataFrame:
     # Drop null values
-    cleaned = data.replace("NA", pd.NA).drop(
-        columns=["Evaporation", "Sunshine", "Cloud9am", "Cloud3pm"]
-    ).dropna()
+    cleaned = (
+        data.replace("NA", pd.NA)
+        .drop(columns=["Evaporation", "Sunshine", "Cloud9am", "Cloud3pm"])
+        .dropna()
+    )
 
     cleaned["MinTemp"] = cleaned[["MinTemp", "Temp9am", "Temp3pm"]].min(axis=1)
     cleaned["MaxTemp"] = cleaned[["MaxTemp", "Temp9am", "Temp3pm"]].max(axis=1)
@@ -114,7 +121,7 @@ def clean_weather(data: pd.DataFrame) -> pd.DataFrame:
         lambda x: "Yes" if x != 0 else "No"
     )
 
-    for col, rules in CONSISTENCY_RULES.items():
+    for col, rules in WEATHER_ORIGINAL_CONSISTENCY_RULES.items():
         rule_results = cleaned[col].apply(
             lambda value: all(rule(value) for rule in rules)
         )

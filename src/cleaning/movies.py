@@ -16,7 +16,7 @@ from src.validation.dates import contains_expected_datetime_format
 from src.validation.numbers import is_integer, is_number
 from src.validation.strings import is_unpadded_nonempty_str
 
-CONSISTENCY_RULES = {
+MOVIES_ORIGINAL_CONSISTENCY_RULES = {
     "budget": [is_number, lambda value: int(value) > 0, is_integer],
     "genres": [
         is_unpadded_nonempty_str,
@@ -26,7 +26,7 @@ CONSISTENCY_RULES = {
     "keywords": [is_unpadded_nonempty_str],
     "original_language": [
         is_unpadded_nonempty_str,
-        lambda value: all(lang in ALLOWED_LANGUAGES for lang in value.split(",")),
+        lambda value: value in ALLOWED_LANGUAGES,
     ],
     "original_title": [is_unpadded_nonempty_str],
     "overview": [is_unpadded_nonempty_str],
@@ -62,6 +62,13 @@ CONSISTENCY_RULES = {
 }
 
 
+def unpack_json_list(value: str, key: str):
+    if pd.isna(value) or value.strip() == "":
+        return value
+    json_data = json.loads(value)
+    return ",".join([d[key].strip() for d in json_data])
+
+
 def clean_movies(original: pd.DataFrame) -> pd.DataFrame:
     # Drop null values
     cleaned = original.drop(columns=["homepage", "tagline"]).dropna()
@@ -75,11 +82,7 @@ def clean_movies(original: pd.DataFrame) -> pd.DataFrame:
         ("production_countries", "iso_3166_1"),
     ]
     for col, key in json_cols:
-        cleaned[col] = cleaned[col].apply(
-            lambda x: (
-                ",".join([d[key].strip() for d in json.loads(x)]) if pd.notna(x) else ""
-            )
-        )
+        cleaned[col] = cleaned[col].apply(lambda x: unpack_json_list(x, key))
 
     # Drop consistency violations
     cleaned = cleaned[cleaned["genres"] != ""]
@@ -102,7 +105,7 @@ def clean_movies(original: pd.DataFrame) -> pd.DataFrame:
 
     if (cleaned.notna().mean() < 1).any():
         raise ValueError("There are still null values in the cleaned dataset.")
-    for col, rules in CONSISTENCY_RULES.items():
+    for col, rules in MOVIES_ORIGINAL_CONSISTENCY_RULES.items():
         rule_results = cleaned[col].apply(
             lambda value: all(rule(value) for rule in rules)
         )

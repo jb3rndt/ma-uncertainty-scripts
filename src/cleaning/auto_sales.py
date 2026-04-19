@@ -3,13 +3,10 @@ import re
 import pandas as pd
 
 from metis.utils.datetime.datetime_precision import determine_datetime_precision
-from src.assessment import (
-    contains_expected_datetime_format,
-    is_datetime,
-)
+from src.validation.dates import contains_expected_datetime_format, is_datetime
 from src.validation.strings import is_unpadded_nonempty_str
 
-CONSISTENCY_RULES = {
+AUTO_SALES_ORIGINAL_CONSISTENCY_RULES = {
     "ORDERNUMBER": [
         lambda value: isinstance(value, int),
         lambda value: value >= 0,
@@ -62,40 +59,17 @@ CONSISTENCY_RULES = {
             "Vintage Cars",
         ]
     ],
-    "MSRP": [
-        lambda value: isinstance(value, int),
-        lambda value: value > 0,
-    ],
-    "PRODUCTCODE": [
-        lambda value: re.match(r"^S\d+_\d+$", value) is not None,
-    ],
-    "CUSTOMERNAME": [
-        is_unpadded_nonempty_str,
-    ],
-    "PHONE": [
-        lambda value: re.match(r"\d+", value) is not None,
-    ],
-    "ADDRESSLINE1": [
-        is_unpadded_nonempty_str,
-    ],
-    "CITY": [
-        is_unpadded_nonempty_str,
-    ],
-    "POSTALCODE": [
-        is_unpadded_nonempty_str,
-    ],
-    "COUNTRY": [
-        is_unpadded_nonempty_str,
-    ],
-    "CONTACTLASTNAME": [
-        is_unpadded_nonempty_str,
-    ],
-    "CONTACTFIRSTNAME": [
-        is_unpadded_nonempty_str,
-    ],
-    "DEALSIZE": [
-        lambda value: value in ["Small", "Medium", "Large"],
-    ],
+    "MSRP": [lambda value: isinstance(value, int), lambda value: value > 0],
+    "PRODUCTCODE": [lambda value: re.match(r"^S\d+_\d+$", value) is not None],
+    "CUSTOMERNAME": [is_unpadded_nonempty_str],
+    "PHONE": [lambda value: re.match(r"\d+", value) is not None],
+    "ADDRESSLINE1": [is_unpadded_nonempty_str],
+    "CITY": [is_unpadded_nonempty_str],
+    "POSTALCODE": [is_unpadded_nonempty_str],
+    "COUNTRY": [is_unpadded_nonempty_str],
+    "CONTACTLASTNAME": [is_unpadded_nonempty_str],
+    "CONTACTFIRSTNAME": [is_unpadded_nonempty_str],
+    "DEALSIZE": [lambda value: value in ["Small", "Medium", "Large"]],
 }
 
 
@@ -104,7 +78,7 @@ def clean_auto_sales(data: pd.DataFrame) -> pd.DataFrame:
 
     cleaned["PHONE"] = cleaned["PHONE"].replace(r"\D", "", regex=True)
 
-    for col, rules in CONSISTENCY_RULES.items():
+    for col, rules in AUTO_SALES_ORIGINAL_CONSISTENCY_RULES.items():
         rule_results = cleaned[col].apply(
             lambda value: all(rule(value) for rule in rules)
         )

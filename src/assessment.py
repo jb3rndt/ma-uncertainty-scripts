@@ -32,6 +32,9 @@ from metis.metric.timeliness.timeliness_heinrich_config import (
     timeliness_heinrich_config,
 )
 from metis.utils.datetime.datetime_precision import determine_datetime_precision
+from src.cleaning.auto_sales import AUTO_SALES_ORIGINAL_CONSISTENCY_RULES
+from src.cleaning.movies import MOVIES_ORIGINAL_CONSISTENCY_RULES, unpack_json_list
+from src.cleaning.weather import WEATHER_ORIGINAL_CONSISTENCY_RULES
 from src.constants import (
     ALLOWED_GENRES,
     CLEANED_DATA_PATH,
@@ -81,7 +84,7 @@ def assess_consistency(folder: Path, force=False):
     metrics = [consistency_ruleBasedPipino.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         consistency_ruleBasedPipino_config(
-            attribute_rules={
+            column_rules={
                 "MinTemp": temp_rules,
                 "MaxTemp": temp_rules,
                 "Temp9am": temp_rules,
@@ -105,8 +108,6 @@ def assess_consistency(folder: Path, force=False):
                         and contains_expected_datetime_format(value.strip(), "%d/%m/%Y")
                     ),
                 ],
-                "Actors": [is_unpadded_str],
-                "Cast": [is_unpadded_str],
                 "runtime": [
                     lambda value: notna(value) and str(value).strip() == str(value),
                     lambda value: notna(value) and is_number(value),
@@ -118,14 +119,8 @@ def assess_consistency(folder: Path, force=False):
                     lambda value: notna(value)
                     and determine_datetime_precision(value) == "day",
                 ],
-                "keywords": [
-                    is_unpadded_str,
-                    no_semis,
-                ],
-                "production_companies": [
-                    is_unpadded_str,
-                    no_semis,
-                ],
+                "keywords": [is_unpadded_str, no_semis],
+                "production_companies": [is_unpadded_str, no_semis],
                 "genres": [
                     is_unpadded_str,
                     no_semis,
@@ -143,6 +138,124 @@ def assess_consistency(folder: Path, force=False):
         metric_configs=metric_configs,
         force=force,
     )
+
+
+def assess_consistency_original_dataset(folder: Path, force=False):
+    def unpack_json_each(key: str, rules: List):
+        return [lambda value: rule(unpack_json_list(value, key)) for rule in rules]
+
+    metrics = [consistency_ruleBasedPipino.__name__]
+    metric_configs: List[str | None | MetricConfig] = [
+        consistency_ruleBasedPipino_config(
+            skip_null_values=True,
+            column_rules={
+                "Date": WEATHER_ORIGINAL_CONSISTENCY_RULES["Date"],
+                "Location": WEATHER_ORIGINAL_CONSISTENCY_RULES["Location"],
+                "MinTemp": WEATHER_ORIGINAL_CONSISTENCY_RULES["MinTemp"],
+                "MaxTemp": WEATHER_ORIGINAL_CONSISTENCY_RULES["MaxTemp"],
+                "Rainfall": WEATHER_ORIGINAL_CONSISTENCY_RULES["Rainfall"],
+                "WindGustDir": WEATHER_ORIGINAL_CONSISTENCY_RULES["WindGustDir"],
+                "WindGustSpeed": WEATHER_ORIGINAL_CONSISTENCY_RULES["WindGustSpeed"],
+                "WindDir9am": WEATHER_ORIGINAL_CONSISTENCY_RULES["WindDir9am"],
+                "WindDir3pm": WEATHER_ORIGINAL_CONSISTENCY_RULES["WindDir3pm"],
+                "WindSpeed9am": WEATHER_ORIGINAL_CONSISTENCY_RULES["WindSpeed9am"],
+                "WindSpeed3pm": WEATHER_ORIGINAL_CONSISTENCY_RULES["WindSpeed3pm"],
+                "Humidity9am": WEATHER_ORIGINAL_CONSISTENCY_RULES["Humidity9am"],
+                "Humidity3pm": WEATHER_ORIGINAL_CONSISTENCY_RULES["Humidity3pm"],
+                "Pressure9am": WEATHER_ORIGINAL_CONSISTENCY_RULES["Pressure9am"],
+                "Pressure3pm": WEATHER_ORIGINAL_CONSISTENCY_RULES["Pressure3pm"],
+                "Temp9am": WEATHER_ORIGINAL_CONSISTENCY_RULES["Temp9am"],
+                "Temp3pm": WEATHER_ORIGINAL_CONSISTENCY_RULES["Temp3pm"],
+                "RainToday": WEATHER_ORIGINAL_CONSISTENCY_RULES["RainToday"],
+                "RainTomorrow": WEATHER_ORIGINAL_CONSISTENCY_RULES["RainTomorrow"],
+                **AUTO_SALES_ORIGINAL_CONSISTENCY_RULES,
+                "budget": MOVIES_ORIGINAL_CONSISTENCY_RULES["budget"],
+                "genres": unpack_json_each(
+                    "name", MOVIES_ORIGINAL_CONSISTENCY_RULES["genres"]
+                ),
+                "id": MOVIES_ORIGINAL_CONSISTENCY_RULES["id"],
+                "keywords": unpack_json_each(
+                    "name", MOVIES_ORIGINAL_CONSISTENCY_RULES["keywords"]
+                ),
+                "original_language": MOVIES_ORIGINAL_CONSISTENCY_RULES[
+                    "original_language"
+                ],
+                "original_title": MOVIES_ORIGINAL_CONSISTENCY_RULES["original_title"],
+                "overview": MOVIES_ORIGINAL_CONSISTENCY_RULES["overview"],
+                "popularity": MOVIES_ORIGINAL_CONSISTENCY_RULES["popularity"],
+                "production_companies": MOVIES_ORIGINAL_CONSISTENCY_RULES[
+                    "production_companies"
+                ],
+                "production_countries": unpack_json_each(
+                    "iso_3166_1",
+                    MOVIES_ORIGINAL_CONSISTENCY_RULES["production_countries"],
+                ),
+                "release_date": MOVIES_ORIGINAL_CONSISTENCY_RULES["release_date"],
+                "revenue": MOVIES_ORIGINAL_CONSISTENCY_RULES["revenue"],
+                "runtime": MOVIES_ORIGINAL_CONSISTENCY_RULES["runtime"],
+                "spoken_languages": unpack_json_each(
+                    "iso_639_1", MOVIES_ORIGINAL_CONSISTENCY_RULES["spoken_languages"]
+                ),
+                "status": MOVIES_ORIGINAL_CONSISTENCY_RULES["status"],
+                "title": MOVIES_ORIGINAL_CONSISTENCY_RULES["title"],
+                "vote_average": MOVIES_ORIGINAL_CONSISTENCY_RULES["vote_average"],
+                "vote_count": MOVIES_ORIGINAL_CONSISTENCY_RULES["vote_count"],
+            },
+        ),
+    ]
+
+    return execute_run(
+        results_folder=folder / "results",
+        polluted_folder=folder,
+        metrics=metrics,
+        metric_configs=metric_configs,
+        force=force,
+    )
+
+
+def assess_tuple_consistency_original_dataset(folder: Path, force=False):
+    metrics = [consistency_ruleBasedPipino.__name__]
+    metric_configs: List[str | None | MetricConfig] = [
+        consistency_ruleBasedPipino_config(
+            skip_null_values=True,
+            tuple_rules=[
+                (["MinTemp", "MaxTemp"], lambda row: row["MinTemp"] <= row["MaxTemp"]),
+                (["MinTemp", "MaxTemp", "Temp9am"], lambda row: row["MinTemp"] <= row["Temp9am"] <= row["MaxTemp"]),
+                (["MinTemp", "MaxTemp", "Temp3pm"], lambda row: row["MinTemp"] <= row["Temp3pm"] <= row["MaxTemp"]),
+                (
+                    ["Rainfall", "RainToday"],
+                    lambda row: row["Rainfall"] != 0
+                    and row["RainToday"] == "Yes"
+                    or row["Rainfall"] == 0
+                    and row["RainToday"] == "No",
+                ),
+                (
+                    ["PRICEEACH", "MSRP", "SALES"],
+                    lambda row: row["PRICEEACH"] <= row["SALES"]
+                    and row["MSRP"] <= row["SALES"],
+                ),
+                (
+                    ["QUANTITYORDERED", "PRICEEACH", "SALES"],
+                    lambda row: row["QUANTITYORDERED"] * row["PRICEEACH"]
+                    == row["SALES"],
+                ),
+                (
+                    ["vote_average"],
+                    lambda row: try_is_between(row["vote_average"], 0, 10),
+                ),
+                (["runtime"], lambda row: try_is_between(row["runtime"], 0, 300)),
+            ],
+        ),
+    ]
+
+    return execute_run(
+        results_folder=folder / "results",
+        polluted_folder=folder,
+        metrics=metrics,
+        metric_configs=metric_configs,
+        force=force,
+    )
+
 
 
 def assess_tuple_consistency(folder: Path, force=False):

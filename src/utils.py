@@ -160,6 +160,9 @@ def grouped_results_and_certainties(
                 .to_numpy()
             )
 
+        dq_results.fillna(1.0, inplace=True)
+        dq_certainties.fillna(1.0, inplace=True)
+
         yield dataset, metric, dq_results, dq_certainties
 
 
