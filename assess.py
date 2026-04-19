@@ -32,7 +32,7 @@ def main():
     all_result_folders.extend(
         [
             # assess_completeness(ORIGINAL_DATA_PATH / "completeness"),
-            # assess_correctness(ORIGINAL_DATA_PATH / "correctness"),
+            assess_correctness(ORIGINAL_DATA_PATH / "correctness"),
             assess_consistency_original_dataset(ORIGINAL_DATA_PATH / "consistency"),
             assess_tuple_consistency_original_dataset(ORIGINAL_DATA_PATH / "consistency_tuple"),
             assess_timeliness(ORIGINAL_DATA_PATH / "timeliness"),

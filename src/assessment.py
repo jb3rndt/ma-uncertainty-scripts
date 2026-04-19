@@ -220,8 +220,14 @@ def assess_tuple_consistency_original_dataset(folder: Path, force=False):
             skip_null_values=True,
             tuple_rules=[
                 (["MinTemp", "MaxTemp"], lambda row: row["MinTemp"] <= row["MaxTemp"]),
-                (["MinTemp", "MaxTemp", "Temp9am"], lambda row: row["MinTemp"] <= row["Temp9am"] <= row["MaxTemp"]),
-                (["MinTemp", "MaxTemp", "Temp3pm"], lambda row: row["MinTemp"] <= row["Temp3pm"] <= row["MaxTemp"]),
+                (
+                    ["MinTemp", "MaxTemp", "Temp9am"],
+                    lambda row: row["MinTemp"] <= row["Temp9am"] <= row["MaxTemp"],
+                ),
+                (
+                    ["MinTemp", "MaxTemp", "Temp3pm"],
+                    lambda row: row["MinTemp"] <= row["Temp3pm"] <= row["MaxTemp"],
+                ),
                 (
                     ["Rainfall", "RainToday"],
                     lambda row: row["Rainfall"] != 0
@@ -255,7 +261,6 @@ def assess_tuple_consistency_original_dataset(folder: Path, force=False):
         metric_configs=metric_configs,
         force=force,
     )
-
 
 
 def assess_tuple_consistency(folder: Path, force=False):
@@ -446,8 +451,16 @@ def assess_correctness(folder: Path, force=False):
         # Hard coded for weather data for now
         metric_configs=[
             correctness_heinrich_config(
-                reference_file_path=folder / "weather.reference.csv",
-                superset_file_path=CLEANED_DATA_PATH / "weather.csv",
+                reference_file_path_per_dataset={
+                    "Date": folder / "weather.reference.csv",
+                    "budget": folder / "movies.reference.csv",
+                    "ORDERNUMBER": folder / "auto_sales.reference.csv",
+                },
+                superset_file_path_per_dataset={
+                    "Date": folder / "weather.superset.csv",
+                    "budget": folder / "movies.superset.csv",
+                    "ORDERNUMBER": folder / "auto_sales.superset.csv",
+                },
             )
         ],
         force=force,
