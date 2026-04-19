@@ -342,6 +342,7 @@ def assess_correctness(folder: Path, force=False):
 
 
 def assess_timeliness(folder: Path, force=False):
+    weather_relevance_interval = 365.25
     metrics = [timeliness_heinrich.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         timeliness_heinrich_config(
@@ -374,18 +375,18 @@ def assess_timeliness(folder: Path, force=False):
                         simulated_assessment_date="2017-07-01",  # newest entry in weather data: 2017-06-25
                     )
                     for col, decline_rate in [
-                        ("MinTemp", 1 / 30),
-                        ("MaxTemp", 1 / 30),
-                        ("Rainfall", 1 / 30),
-                        ("Temp9am", (24 / 6) / 30),
-                        ("Temp3pm", (24 / 18) / 30),
-                        ("WindGustSpeed", 1 / 30),
-                        ("WindSpeed9am", (24 / 6) / 30),
-                        ("WindSpeed3pm", (24 / 18) / 30),
-                        ("Pressure9am", (24 / 6) / 30),
-                        ("Pressure3pm", (24 / 18) / 30),
-                        ("Humidity9am", (24 / 6) / 30),
-                        ("Humidity3pm", (24 / 18) / 30),
+                        ("MinTemp", 1 / weather_relevance_interval),
+                        ("MaxTemp", 1 / weather_relevance_interval),
+                        ("Rainfall", 1 / weather_relevance_interval),
+                        ("Temp9am", (24 / 6) / weather_relevance_interval),
+                        ("Temp3pm", (24 / 18) / weather_relevance_interval),
+                        ("WindGustSpeed", 1 / weather_relevance_interval),
+                        ("WindSpeed9am", (24 / 6) / weather_relevance_interval),
+                        ("WindSpeed3pm", (24 / 18) / weather_relevance_interval),
+                        ("Pressure9am", (24 / 6) / weather_relevance_interval),
+                        ("Pressure3pm", (24 / 18) / weather_relevance_interval),
+                        ("Humidity9am", (24 / 6) / weather_relevance_interval),
+                        ("Humidity3pm", (24 / 18) / weather_relevance_interval),
                     ]
                 },
             }
