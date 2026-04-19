@@ -64,7 +64,7 @@ def evaluate_auto_sales_prediction(config: RegressionConfig):
         polluted_data,
         polluted_dq,
         polluted_certainty,
-        dataset_size=1328,
+        dataset_size=1334,
     ):
         measurements.append(
             {

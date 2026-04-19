@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn import ensemble
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder
+from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder, StandardScaler
 
 from src.downstream_task.config import RegressionConfig
 from src.downstream_task.utils import generate_eval_permutations, prepare_data
@@ -68,11 +68,11 @@ def evaluate_classifier(
     X_test = cleaned_data.loc[test_idx].drop(config.target_col, axis=1)
     y_test = cleaned_data.loc[test_idx][config.target_col]
 
-    # scaler = StandardScaler()
-    # scaler.fit(X_train)
+    scaler = StandardScaler()
+    scaler.fit(X_train)
 
-    # X_train = scaler.transform(X_train)
-    # X_test = scaler.transform(X_test)
+    X_train = scaler.transform(X_train)
+    X_test = scaler.transform(X_test)
 
     clf = ensemble.GradientBoostingRegressor(
         n_estimators=config.n_estimators,
@@ -111,7 +111,7 @@ def evaluate_movies_prediction(config: RegressionConfig):
         polluted_data,
         polluted_dq,
         polluted_certainty,
-        dataset_size=1858,
+        dataset_size=2410,
     ):
         measurements.append(
             {
