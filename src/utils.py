@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 
 from metis.dq_orchestrator import DQOrchestrator
 from metis.metric.config import MetricConfig
-from src.constants import CLEANED_DATA_PATH, POLLUTION_RATES
+from src.constants import CLEANED_DATA_PATH, ORIGINAL_DATA_PATH, POLLUTION_RATES
 from src.evaluation.types import ColumnEvaluationResult, ColumnRawData
 
 DSLiteral = Literal["weather", "auto_sales", "movies", "open_library"]
@@ -189,7 +189,9 @@ def normalize_pollution_rate(rate: float) -> float:
     return POLLUTION_RATES[np.argmin(np.abs(np.array(POLLUTION_RATES) - rate))]
 
 
-def get_necessary_folders(run_name: str | None = None):
+def get_necessary_folders(
+    run_name: str | None = None, original: bool = False, cleaned: bool = True
+):
     polluted_path = Path(
         "/Users/jberndt/Documents/Masterarbeit/data-pollution/data/polluted"
     )
@@ -204,17 +206,17 @@ def get_necessary_folders(run_name: str | None = None):
     ]
 
     return sorted(polluted_folders) + [
-        # ORIGINAL_DATA_PATH,
-        CLEANED_DATA_PATH,
+        *([ORIGINAL_DATA_PATH] if original else []),
+        *([CLEANED_DATA_PATH] if cleaned else []),
     ]
 
 
-def load_raw_results(run_name: str | None = None):
+def load_raw_results(run_name: str | None = None, original: bool = False):
     return {
         (dim_folder.name, folder.name): json.load(
             (dim_folder / "results" / "raw_results.json").open()
         )
-        for folder in get_necessary_folders(run_name)
+        for folder in get_necessary_folders(run_name, original=original)
         for dim_folder in folder.glob("*")
         if dim_folder.is_dir()
         and (dim_folder / "results" / "raw_results.json").exists()
@@ -247,12 +249,12 @@ def flatten_raw_results(raw_results: dict) -> pd.DataFrame:
     )
 
 
-def load_evaluations(run_name: str | None = None):
+def load_evaluations(run_name: str | None = None, original: bool = False):
     return {
         (dim_folder.name, folder.name): json.load(
             (dim_folder / "results" / "evaluations.json").open()
         )
-        for folder in get_necessary_folders(run_name)
+        for folder in get_necessary_folders(run_name, original=original)
         for dim_folder in folder.glob("*")
         if dim_folder.is_dir()
         and (dim_folder / "results" / "evaluations.json").exists()
@@ -293,20 +295,28 @@ def res_raw(df: pd.DataFrame) -> List[ColumnRawData]:
     return df["result"].tolist()
 
 
-def get_raw_results(run_name: str | None = None) -> pd.DataFrame:
+def get_raw_results(
+    run_name: str | None = None, original: bool = False
+) -> pd.DataFrame:
     key = "__df_raw_results__"
     if key not in globals():
         print("Loading raw results...")
-        globals()[key] = flatten_raw_results(load_raw_results(run_name))
+        globals()[key] = flatten_raw_results(
+            load_raw_results(run_name, original=original)
+        )
 
     return globals()[key]
 
 
-def get_evaluations(run_name: str | None = None) -> pd.DataFrame:
+def get_evaluations(
+    run_name: str | None = None, original: bool = False
+) -> pd.DataFrame:
     key = "__df_evaluations__"
     if key not in globals():
         print("Loading evaluations...")
-        globals()[key] = flatten_evaluations(load_evaluations(run_name))
+        globals()[key] = flatten_evaluations(
+            load_evaluations(run_name, original=original)
+        )
 
     return globals()[key]
 
@@ -324,7 +334,9 @@ def grouped_figure(
     nrows=1,
 ):
     for fig_key, fig_group in df.groupby(figureby):
-        grouped_by_column = fig_group.groupby(colby)
+        grouped_by_column = (
+            fig_group.groupby(colby) if colby else [(tuple(), fig_group)]
+        )
         ncols = len(grouped_by_column)
 
         fig, axes = plt.subplots(

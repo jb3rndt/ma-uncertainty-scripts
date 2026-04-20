@@ -103,8 +103,7 @@ def assess_consistency(folder: Path, force=False):
                     skip_null_values=True,
                     column_rules={
                         "runtime": [
-                            lambda value: notna(value)
-                            and str(value).strip() == str(value),
+                            is_unpadded_str,
                             lambda value: notna(value) and is_number(value),
                             lambda value: notna(value)
                             and try_is_between(value, 0, 300),
@@ -280,7 +279,7 @@ def assess_tuple_consistency(folder: Path, force=False):
                 r"movies.*": consistency_ruleBasedPipino_config(
                     tuple_rules=[
                         lambda row: try_is_between(row["vote_average"], 0, 10),
-                        lambda row: try_is_between(row["runtime"], 0, 300),
+                        lambda row: try_is_between(row["runtime"], 0, 338),
                         lambda row: round(row["popularity"], 6) == row["popularity"],
                     ],
                 ),
@@ -290,7 +289,7 @@ def assess_tuple_consistency(folder: Path, force=False):
                         and row["MSRP"] <= row["SALES"],
                         lambda row: round(row["DAYS_SINCE_LASTORDER"])
                         == row["DAYS_SINCE_LASTORDER"],
-                        lambda row: row["QUANTITYORDERED"] * row["PRICEEACH"]
+                        lambda row: round(row["QUANTITYORDERED"] * row["PRICEEACH"], 2)
                         == row["SALES"],
                     ],
                 ),
@@ -413,6 +412,22 @@ def assess_completeness(folder: Path, force=False):
             ),
             completeness_nullAndDMVRatio_config(),
             completeness_nullRatio_config(),
+        ],
+        force=force,
+    )
+
+
+def assess_completeness_original(folder: Path, force=False):
+    return execute_run(
+        results_folder=folder / "results",
+        polluted_folder=folder,
+        metrics=[
+            completeness_nullRatio.__name__,
+            completeness_nullAndDMVRatio.__name__,
+        ],
+        metric_configs=[
+            completeness_nullRatio_config(),
+            completeness_nullAndDMVRatio_config(),
         ],
         force=force,
     )
