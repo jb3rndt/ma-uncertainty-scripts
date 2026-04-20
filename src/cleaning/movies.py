@@ -1,10 +1,6 @@
 import json
-import re
-from datetime import datetime
 
 import pandas as pd
-import pycountry
-import requests
 
 from metis.utils.datetime.datetime_precision import determine_datetime_precision
 from src.constants import (
@@ -13,7 +9,7 @@ from src.constants import (
     ALLOWED_LANGUAGES,
 )
 from src.validation.dates import contains_expected_datetime_format
-from src.validation.numbers import is_integer, is_number
+from src.validation.numbers import is_integer, is_number, try_is_between
 from src.validation.strings import is_unpadded_nonempty_str
 
 MOVIES_ORIGINAL_CONSISTENCY_RULES = {
@@ -60,6 +56,12 @@ MOVIES_ORIGINAL_CONSISTENCY_RULES = {
     "vote_average": [is_number, lambda value: 0 <= float(value) <= 10],
     "vote_count": [is_number, lambda value: int(value) >= 0, is_integer],
 }
+
+MOVIES_ORIGINAL_CONSISTENCY_TUPLE_RULES = [
+    lambda row: try_is_between(row["vote_average"], 0, 10),
+    lambda row: try_is_between(row["runtime"], 0, 338),
+    lambda row: round(row["popularity"], 6) == row["popularity"],
+]
 
 
 def unpack_json_list(value: str, key: str):
@@ -112,6 +114,14 @@ def clean_movies(original: pd.DataFrame) -> pd.DataFrame:
         if not rule_results.all():
             print(cleaned[~rule_results][["id", col]])
             raise ValueError(f"There are still consistency violations in column {col}.")
+
+    for i, rule in enumerate(MOVIES_ORIGINAL_CONSISTENCY_TUPLE_RULES):
+        rule_results = cleaned.apply(lambda row: rule(row), axis=1)
+        if not rule_results.all():
+            print(cleaned[~rule_results])
+            raise ValueError(
+                f"There are still consistency violations in the dataset. (Rule {i})"
+            )
 
     print("Size reduced by", 100 - len(cleaned) / len(original) * 100, "%")
     return cleaned

@@ -72,11 +72,19 @@ AUTO_SALES_ORIGINAL_CONSISTENCY_RULES = {
     "DEALSIZE": [lambda value: value in ["Small", "Medium", "Large"]],
 }
 
+AUTO_SALES_ORIGINAL_CONSISTENCY_TUPLE_RULES = [
+    lambda row: row["PRICEEACH"] <= row["SALES"] and row["MSRP"] <= row["SALES"],
+    lambda row: round(row["DAYS_SINCE_LASTORDER"]) == row["DAYS_SINCE_LASTORDER"],
+    lambda row: round(float(row["QUANTITYORDERED"]) * float(row["PRICEEACH"]), 2)
+    == float(row["SALES"]),
+]
+
 
 def clean_auto_sales(data: pd.DataFrame) -> pd.DataFrame:
     cleaned = data
 
     cleaned["PHONE"] = cleaned["PHONE"].replace(r"\D", "", regex=True)
+    cleaned["SALES"] = (cleaned["QUANTITYORDERED"] * cleaned["PRICEEACH"]).round(2)
 
     for col, rules in AUTO_SALES_ORIGINAL_CONSISTENCY_RULES.items():
         rule_results = cleaned[col].apply(
@@ -86,4 +94,11 @@ def clean_auto_sales(data: pd.DataFrame) -> pd.DataFrame:
             print(cleaned[~rule_results])
             raise ValueError(f"There are still consistency violations in column {col}.")
 
+    for i, rule in enumerate(AUTO_SALES_ORIGINAL_CONSISTENCY_TUPLE_RULES):
+        rule_results = cleaned.apply(lambda row: rule(row), axis=1)
+        if not rule_results.all():
+            print(cleaned[~rule_results])
+            raise ValueError(
+                f"There are still consistency violations in the dataset. (Rule {i})"
+            )
     return cleaned
