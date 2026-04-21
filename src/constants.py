@@ -1,8 +1,10 @@
 from pathlib import Path
 
 POLLUTION_RATES = [0.0125, 0.025, 0.05, 0.1, 0.2, 0.35, 0.5]
-ORIGINAL_DATA_PATH = Path("../data-pollution/data/original").absolute()
-CLEANED_DATA_PATH = Path("../data-pollution/data/cleaned").absolute()
+DATA_PATH = Path("data")
+ORIGINAL_DATA_PATH = DATA_PATH / "original"
+CLEANED_DATA_PATH = DATA_PATH / "cleaned"
+POLLUTED_DATA_PATH = DATA_PATH / "polluted"
 
 # fmt: off
 ALLOWED_GENRES = ['Action', 'Adventure', 'Fantasy', 'Science Fiction', 'Crime', 'Drama', 'Thriller', 'Animation', 'Family', 'Western', 'Comedy', 'Romance', 'Horror', 'Mystery', 'History', 'War', 'Music', 'Documentary', 'Foreign', 'TV Movie',] # Acquired by listing all unique genres in the dataset

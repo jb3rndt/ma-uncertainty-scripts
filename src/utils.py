@@ -11,7 +11,12 @@ from matplotlib import pyplot as plt
 
 from metis.dq_orchestrator import DQOrchestrator
 from metis.metric.config import MetricConfig
-from src.constants import CLEANED_DATA_PATH, ORIGINAL_DATA_PATH, POLLUTION_RATES
+from src.constants import (
+    CLEANED_DATA_PATH,
+    ORIGINAL_DATA_PATH,
+    POLLUTED_DATA_PATH,
+    POLLUTION_RATES,
+)
 from src.evaluation.types import ColumnEvaluationResult, ColumnRawData
 
 DSLiteral = Literal["weather", "auto_sales", "movies", "open_library"]
@@ -192,11 +197,10 @@ def normalize_pollution_rate(rate: float) -> float:
 def get_necessary_folders(
     run_name: str | None = None, original: bool = False, cleaned: bool = True
 ):
-    polluted_path = Path(
-        "/Users/jberndt/Documents/Masterarbeit/data-pollution/data/polluted"
-    )
     pollution_folder = (
-        max(polluted_path.glob("*")) if run_name is None else polluted_path / run_name
+        max([folder for folder in POLLUTED_DATA_PATH.glob("*") if folder.is_dir()])
+        if run_name is None
+        else POLLUTED_DATA_PATH / run_name
     )
     assert (
         pollution_folder.exists()

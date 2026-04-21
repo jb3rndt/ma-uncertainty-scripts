@@ -36,6 +36,7 @@ from src.cleaning.movies import MOVIES_ORIGINAL_CONSISTENCY_RULES, unpack_json_l
 from src.cleaning.weather import WEATHER_ORIGINAL_CONSISTENCY_RULES
 from src.constants import (
     ALLOWED_GENRES,
+    CLEANED_DATA_PATH,
     TOP_OL_COLUMNS,
 )
 from src.utils import execute_run
@@ -307,6 +308,7 @@ def assess_tuple_consistency(folder: Path, force=False):
 
 
 def assess_completeness(folder: Path, force=False):
+    dataset_type = "polluted" if "polluted" in str(folder) else "cleaned"
     return execute_run(
         results_folder=folder / "results",
         polluted_folder=folder,
@@ -319,12 +321,21 @@ def assess_completeness(folder: Path, force=False):
             DatasetDependentMetricConfig(
                 config_per_dataset={
                     r"weather.*": completeness_nullAndDMVRatio_config(
+                        explanatory_results_path=str(
+                            folder / "explanatory_results" / "weather"
+                        ),
                         dismis_config=completeness_nullAndDMVRatio_config_dismis(
                             value_embeddings_path=str(
-                                folder / "weather.polluted_value_embeddings.json"
+                                folder / f"weather.{dataset_type}_value_embeddings.json"
                             ),
-                            example_dmvs_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/weather_example_dmvs_detection.json",
-                            example_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/weather_precomputed_example_embeddings.json",
+                            example_dmvs_path=str(
+                                CLEANED_DATA_PATH
+                                / "weather_example_dmvs_detection.json"
+                            ),
+                            example_embeddings_path=str(
+                                CLEANED_DATA_PATH
+                                / "weather_example_dmvs_detection.embeddings.json"
+                            ),
                             column_types={
                                 "Date": "date",
                                 "Location": "categorical",
@@ -349,12 +360,20 @@ def assess_completeness(folder: Path, force=False):
                         ),
                     ),
                     r"movies.*": completeness_nullAndDMVRatio_config(
+                        explanatory_results_path=str(
+                            folder / "explanatory_results" / "movies"
+                        ),
                         dismis_config=completeness_nullAndDMVRatio_config_dismis(
                             value_embeddings_path=str(
-                                folder / "movies.polluted_value_embeddings.json"
+                                folder / f"movies.{dataset_type}_value_embeddings.json"
                             ),
-                            example_dmvs_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/movies_example_dmvs_detection.json",
-                            example_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/movies_precomputed_example_embeddings.json",
+                            example_dmvs_path=str(
+                                CLEANED_DATA_PATH / "movies_example_dmvs_detection.json"
+                            ),
+                            example_embeddings_path=str(
+                                CLEANED_DATA_PATH
+                                / "movies_example_dmvs_detection.embeddings.json"
+                            ),
                             column_types={
                                 "id": "numeric",
                                 "budget": "numeric",
@@ -378,12 +397,22 @@ def assess_completeness(folder: Path, force=False):
                         ),
                     ),
                     r"auto_sales.*": completeness_nullAndDMVRatio_config(
+                        explanatory_results_path=str(
+                            folder / "explanatory_results" / "auto_sales"
+                        ),
                         dismis_config=completeness_nullAndDMVRatio_config_dismis(
                             value_embeddings_path=str(
-                                folder / "auto_sales.polluted_value_embeddings.json"
+                                folder
+                                / f"auto_sales.{dataset_type}_value_embeddings.json"
                             ),
-                            example_dmvs_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/auto_sales_example_dmvs_detection.json",
-                            example_embeddings_path="/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/auto_sales_precomputed_example_embeddings.json",
+                            example_dmvs_path=str(
+                                CLEANED_DATA_PATH
+                                / "auto_sales_example_dmvs_detection.json"
+                            ),
+                            example_embeddings_path=str(
+                                CLEANED_DATA_PATH
+                                / "auto_sales_example_dmvs_detection.embeddings.json"
+                            ),
                             column_types={
                                 "ORDERNUMBER": "numeric",
                                 "QUANTITYORDERED": "numeric",
@@ -410,7 +439,25 @@ def assess_completeness(folder: Path, force=False):
                     ),
                 }
             ),
-            completeness_nullAndDMVRatio_config(),
+            DatasetDependentMetricConfig(
+                config_per_dataset={
+                    r"weather.*": completeness_nullAndDMVRatio_config(
+                        explanatory_results_path=str(
+                            folder / "explanatory_results" / "weather"
+                        ),
+                    ),
+                    r"movies.*": completeness_nullAndDMVRatio_config(
+                        explanatory_results_path=str(
+                            folder / "explanatory_results" / "movies"
+                        ),
+                    ),
+                    r"auto_sales.*": completeness_nullAndDMVRatio_config(
+                        explanatory_results_path=str(
+                            folder / "explanatory_results" / "auto_sales"
+                        ),
+                    ),
+                }
+            ),
             completeness_nullRatio_config(),
         ],
         force=force,

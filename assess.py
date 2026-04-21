@@ -3,6 +3,7 @@ from typing import List
 
 from src.assessment import (
     assess_completeness,
+    assess_completeness_original,
     assess_consistency,
     assess_consistency_original_dataset,
     assess_correctness,
