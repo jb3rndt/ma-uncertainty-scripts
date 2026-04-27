@@ -5,9 +5,14 @@ from pathlib import Path
 from typing import Dict, List, Literal, NamedTuple, Tuple
 
 import pandas as pd
-from sklearn.metrics import auc, precision_recall_curve
+from sklearn.metrics import (
+    auc,
+    mean_absolute_error,
+    mean_squared_error,
+    precision_recall_curve,
+    root_mean_squared_error,
+)
 
-from src.evaluation.aggregation import evaluate_aggregation_methods
 from src.evaluation.types import ColumnEvaluationResult, ColumnRawData
 from src.utils import first_or_none, grouped_results_and_certainties
 
@@ -49,11 +54,6 @@ def get_col_config(pollution_config: dict | None, col: str, is_tuple_based: bool
     )
 
 
-def mse(expected: pd.Series, predicted: pd.Series):
-    errors = (expected - predicted) ** 2
-    return errors.mean()
-
-
 def pr_auc_per_column(expected: pd.DataFrame, predicted: pd.DataFrame) -> Dict:
     return {
         column: pr_auc(expected[column], predicted[column])
@@ -80,6 +80,12 @@ def pr_auc(expected: pd.Series, predicted: pd.Series):
             thresholds.tolist(),
             float(pr_auc),
         )
+
+
+def rmse(expected: pd.Series, predicted: pd.Series):
+    if len(expected) == 0:
+        return 0
+    return root_mean_squared_error(expected, predicted)
 
 
 def evaluate_run(
@@ -128,7 +134,7 @@ def evaluate_run(
 
     dq_results_flat = pd.read_csv(results_folder / "dq_results.csv")
 
-    for dataset, metric, dq_results, dq_certainties in grouped_results_and_certainties(
+    for dataset, metric, dq_results, dq_certainties, _ in grouped_results_and_certainties(
         dq_results_flat
     ):
         data = reference_per_data_config[dataset]["data"]
@@ -208,6 +214,11 @@ def evaluate_run(
             #     dq_results[col], dq_certainties[col], 1 - is_clean_mask[col]
             # )
 
+            dq_results_dirty = dq_results[col][~is_clean_mask[col]]
+            dq_certainties_dirty = dq_certainties[col][~is_clean_mask[col]]
+            dq_results_clean = dq_results[col][is_clean_mask[col]]
+            dq_certainties_clean = dq_certainties[col][is_clean_mask[col]]
+
             evaluations[metric][dataset][col] = dataclasses.asdict(
                 ColumnEvaluationResult(
                     pollution_ratio=1 - is_clean_mask[col].mean(),
@@ -227,9 +238,31 @@ def evaluate_run(
                     ),
                     dq_results_null_ratio=dq_results[col].isna().mean(),
                     certainty_null_ratio=dq_certainties[col].isna().mean(),
-                    mse=mse(is_clean_mask[col], dq_results[col]),
-                    mse_weighted=mse(
+                    rmse=root_mean_squared_error(is_clean_mask[col], dq_results[col]),
+                    rmse_weighted=root_mean_squared_error(
                         is_clean_mask[col], dq_results[col] * dq_certainties[col]
+                    ),
+                    mse=mean_squared_error(is_clean_mask[col], dq_results[col]),
+                    mse_weighted=mean_squared_error(
+                        is_clean_mask[col], dq_results[col] * dq_certainties[col]
+                    ),
+                    mae=mean_absolute_error(is_clean_mask[col], dq_results[col]),
+                    mae_weighted=mean_absolute_error(
+                        is_clean_mask[col], dq_results[col] * dq_certainties[col]
+                    ),
+                    rmse_dirty=rmse(
+                        is_clean_mask[col][~is_clean_mask[col]], dq_results_dirty
+                    ),
+                    rmse_weighted_dirty=rmse(
+                        is_clean_mask[col][~is_clean_mask[col]],
+                        dq_results_dirty * dq_certainties_dirty,
+                    ),
+                    rmse_clean=rmse(
+                        is_clean_mask[col][is_clean_mask[col]], dq_results_clean
+                    ),
+                    rmse_weighted_clean=rmse(
+                        is_clean_mask[col][is_clean_mask[col]],
+                        dq_results_clean * dq_certainties_clean,
                     ),
                     pr_auc=pr_auc_result.pr_auc,
                     precision=pr_auc_result.precision,

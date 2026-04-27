@@ -20,6 +20,14 @@ class ColumnEvaluationResult:
     condition_to_column: str | None
     dq_results_null_ratio: float
     certainty_null_ratio: float
+    mae: float
+    mae_weighted: float
+    rmse: float
+    rmse_weighted: float
+    rmse_dirty: float
+    rmse_weighted_dirty: float
+    rmse_clean: float
+    rmse_weighted_clean: float
     mse: float
     mse_weighted: float
     pr_auc: float
