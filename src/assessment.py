@@ -30,7 +30,6 @@ from metis.metric.timeliness.timeliness_heinrich_config import (
     timeliness_heinrich_column_config,
     timeliness_heinrich_config,
 )
-from metis.utils.datetime.datetime_precision import determine_datetime_precision
 from src.cleaning.auto_sales import AUTO_SALES_ORIGINAL_CONSISTENCY_RULES
 from src.cleaning.movies import MOVIES_ORIGINAL_CONSISTENCY_RULES, unpack_json_list
 from src.cleaning.weather import WEATHER_ORIGINAL_CONSISTENCY_RULES
@@ -40,8 +39,13 @@ from src.constants import (
     TOP_OL_COLUMNS,
 )
 from src.utils import execute_run
-from src.validation.dates import contains_expected_datetime_format, is_datetime
-from src.validation.numbers import extract_number, is_integer, is_number, try_is_between
+from src.validation.dates import contains_expected_datetime_format
+from src.validation.numbers import (
+    extract_number,
+    is_integer,
+    is_number,
+    try_is_between,
+)
 
 
 def notna(value: Any) -> bool:
@@ -49,36 +53,34 @@ def notna(value: Any) -> bool:
 
 
 temp_rules = [
-    lambda value: notna(value) and try_is_between(value, -10, 50),
-    lambda value: notna(value) and str(extract_number(value))[::-1].find(".") == 1,
-    lambda value: notna(value) and is_number(value),
+    lambda value: try_is_between(value, -10, 50),
+    lambda value: str(extract_number(value))[::-1].find(".") == 1,
+    lambda value: is_number(value),
 ]
 
 speed_rules = [
-    lambda value: notna(value) and try_is_between(value, 0, 140),
-    lambda value: notna(value) and str(extract_number(value))[::-1].find(".") == 1,
-    lambda value: notna(value) and is_number(value),
+    lambda value: try_is_between(value, 0, 140),
+    lambda value: str(extract_number(value))[::-1].find(".") == 1,
+    lambda value: is_number(value),
 ]
 
 pressure_rules = [
-    lambda value: notna(value) and try_is_between(value, 900, 1100),
-    lambda value: notna(value) and str(extract_number(value))[::-1].find(".") == 1,
-    lambda value: notna(value) and is_number(value),
+    lambda value: try_is_between(value, 900, 1100),
+    lambda value: str(extract_number(value))[::-1].find(".") == 1,
+    lambda value: is_number(value),
 ]
 
 humidity_rules = [
     # Changing [0-100] to [0-1] is undetectable here
-    lambda value: notna(value) and try_is_between(value, 0, 100),
-    lambda value: notna(value) and str(extract_number(value))[::-1].find(".") == 1,
-    lambda value: notna(value) and is_number(value),
+    lambda value: try_is_between(value, 0, 100),
+    lambda value: str(extract_number(value))[::-1].find(".") == 1,
+    lambda value: is_number(value),
 ]
 
 
 def assess_consistency(folder: Path, force=False):
-    is_unpadded_str: Callable[[Any], bool] = (
-        lambda value: notna(value) and value.strip() == value
-    )
-    no_semis = lambda value: notna(value) and ";" not in value
+    is_unpadded = lambda value: not isinstance(value, str) or value.strip() == value
+    no_semis = lambda value: ";" not in value
 
     metrics = [consistency_ruleBasedPipino.__name__]
     metric_configs: List[str | None | MetricConfig] = [
@@ -104,24 +106,22 @@ def assess_consistency(folder: Path, force=False):
                     skip_null_values=True,
                     column_rules={
                         "runtime": [
-                            is_unpadded_str,
-                            lambda value: notna(value) and is_number(value),
-                            lambda value: notna(value)
-                            and try_is_between(value, 0, 300),
+                            is_unpadded,
+                            lambda value: is_number(value),
+                            # lambda value: try_is_between(value, 0, 300),
                         ],
                         "release_date": [
-                            lambda value: notna(value)
-                            and contains_expected_datetime_format(value, "%Y-%m-%d"),
-                            lambda value: notna(value)
-                            and determine_datetime_precision(value) == "day",
+                            is_unpadded,
+                            lambda value: contains_expected_datetime_format(
+                                value, "%Y-%m-%d"
+                            ),
                         ],
-                        "keywords": [is_unpadded_str, no_semis],
-                        "production_companies": [is_unpadded_str, no_semis],
+                        "keywords": [is_unpadded, no_semis],
+                        "production_companies": [is_unpadded, no_semis],
                         "genres": [
-                            is_unpadded_str,
+                            is_unpadded,
                             no_semis,
-                            lambda value: notna(value)
-                            and all(
+                            lambda value: all(
                                 genre in ALLOWED_GENRES for genre in value.split(",")
                             ),
                         ],
@@ -131,17 +131,17 @@ def assess_consistency(folder: Path, force=False):
                     skip_null_values=True,
                     column_rules={
                         "PRICEEACH": [
-                            lambda value: notna(value) and is_number(value),
-                            lambda value: notna(value) and not is_integer(value),
+                            lambda value: is_number(value),
+                            lambda value: not is_integer(value),
+                        ],
+                        "SALES": [
+                            lambda value: is_number(value),
+                            lambda value: not is_integer(value),
                         ],
                         "ORDERDATE": [
-                            lambda value: notna(value) and value.strip() == value,
-                            lambda value: (
-                                notna(value)
-                                and is_datetime(value.strip(), {"dayfirst": False})
-                                and contains_expected_datetime_format(
-                                    value.strip(), "%d/%m/%Y"
-                                )
+                            is_unpadded,
+                            lambda value: contains_expected_datetime_format(
+                                value.strip(), "%d/%m/%Y"
                             ),
                         ],
                     },

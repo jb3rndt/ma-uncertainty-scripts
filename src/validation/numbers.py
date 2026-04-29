@@ -1,9 +1,7 @@
-
-
 import re
 
-
 NUMBER_REGEX = re.compile(r"^\-?\d+(\.\d+)?")
+
 
 def is_number(value: str | int | float) -> bool:
     try:
@@ -23,8 +21,8 @@ def extract_number(value: str | float | int):
 
 
 def is_integer(value: str | float | int) -> bool:
-    number = extract_number(value)
-    return number.is_integer() if number is not None else False
+    return "." not in str(value) if value is not None else False
+
 
 def try_is_between(
     value: str | float | int, min_value: float, max_value: float
