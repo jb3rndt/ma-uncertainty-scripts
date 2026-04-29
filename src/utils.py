@@ -82,7 +82,10 @@ def execute_run(
         results_folder.mkdir(parents=True)
         orchestrator = DQOrchestrator(
             writer_config_path=materialize(
-                {"writer_name": "csv", "path": str(results_folder / "dq_results.csv")}
+                {
+                    "writer_name": "csv",
+                    "path": str((results_folder / "dq_results.csv").absolute()),
+                }
             )
         )
 
@@ -92,9 +95,9 @@ def execute_run(
                     {
                         "loader": "CSV",
                         "name": path.stem,
-                        "file_name": str(path),
+                        "file_name": str(path.absolute()),
                     },
-                    str(results_folder / f"{path.stem}.loader_config.json"),
+                    (results_folder / f"{path.stem}.loader_config.json").absolute(),
                 )
                 for path in data_paths
             ]
@@ -136,15 +139,12 @@ def format_columnName(columnName):
 
 def grouped_results_and_certainties(
     flat_results: pd.DataFrame,
-) -> Generator[Tuple[str, str, pd.DataFrame, pd.DataFrame], None, None]:
-    for key, index in flat_results.groupby(["tableName", "DQmetric"]).groups.items():
-        tableName, DQmetric = cast(tuple, key)
-        metric = str(DQmetric)
-        dataset = str(tableName)
-        group = flat_results.loc[index]
+):
+    for (dataset, metric), group in flat_results.groupby(["tableName", "DQmetric"]):
         dq_results = pd.DataFrame(
             None, index=pd.RangeIndex(stop=group["rowIndex"].max() + 1)
         )
+        dq_explanation = pd.DataFrame(None, index=dq_results.index)
         dq_certainties = pd.DataFrame(None, index=dq_results.index)
 
         for column_key, data in group.groupby("columnNames"):
@@ -153,22 +153,27 @@ def grouped_results_and_certainties(
                 "DQvalue"
             ].to_numpy()
 
-            dq_certainties.loc[data["rowIndex"].tolist(), column] = (
+            dq_explanation.loc[data["rowIndex"].tolist(), column] = (
                 data["DQexplanation"]
                 .apply(
                     lambda x: (
-                        json.loads(str(x).replace("'", '"')).get("certainty", 1.0)
+                        json.loads(str(x).replace("'", '"'))
                         if x and not pd.isna(x) and len(x) > 0
-                        else 1.0
+                        else {}
                     )
                 )
+                .to_numpy()
+            )
+            dq_certainties.loc[data["rowIndex"].tolist(), column] = (
+                dq_explanation.loc[data["rowIndex"].tolist(), column]
+                .apply(lambda x: x.get("certainty"))
                 .to_numpy()
             )
 
         dq_results.fillna(1.0, inplace=True)
         dq_certainties.fillna(1.0, inplace=True)
 
-        yield dataset, metric, dq_results, dq_certainties
+        yield str(dataset), str(metric), dq_results, dq_certainties, dq_explanation
 
 
 def make_labels(df: pd.DataFrame) -> List[str]:
@@ -266,6 +271,13 @@ def load_evaluations(run_name: str | None = None, original: bool = False):
 
 
 def flatten_evaluations(evaluations: dict) -> pd.DataFrame:
+    def create_result(args):
+        try:
+            return ColumnEvaluationResult(**args)
+        except Exception as e:
+            print(f"Error creating ColumnEvaluationResult with args: {args}")
+            raise e
+
     return pd.DataFrame(
         [
             {
@@ -281,7 +293,7 @@ def flatten_evaluations(evaluations: dict) -> pd.DataFrame:
                 ),
                 "original_pollution_rate": results[column]["pollution_ratio"],
                 "pollution_mechanism": results[column]["pollution_mechanism"],
-                "result": ColumnEvaluationResult(**results[column]),
+                "result": create_result(results[column]),
             }
             for (dim, folder), evaluation in evaluations.items()
             for metric, datasets in evaluation.items()
@@ -355,4 +367,4 @@ def grouped_figure(
             for (col_key, col_group), (col, ax) in zip(
                 grouped_by_column, enumerate(row_axes)
             ):
-                yield fig_key, col_key, col_group, ax, fig, row, col
+                yield fig_key, col_key, col_group, ax, fig, (row, col, nrows, ncols)

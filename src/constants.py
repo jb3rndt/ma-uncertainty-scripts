@@ -6,6 +6,12 @@ ORIGINAL_DATA_PATH = DATA_PATH / "original"
 CLEANED_DATA_PATH = DATA_PATH / "cleaned"
 POLLUTED_DATA_PATH = DATA_PATH / "polluted"
 
+TIMELINESS = "timeliness"
+COMPLETENESS = "completeness"
+CONSISTENCY = "consistency"
+CONSISTENCY_TUPLE = "consistency_tuple"
+CORRECTNESS = "correctness"
+
 # fmt: off
 ALLOWED_GENRES = ['Action', 'Adventure', 'Fantasy', 'Science Fiction', 'Crime', 'Drama', 'Thriller', 'Animation', 'Family', 'Western', 'Comedy', 'Romance', 'Horror', 'Mystery', 'History', 'War', 'Music', 'Documentary', 'Foreign', 'TV Movie',] # Acquired by listing all unique genres in the dataset
 ALLOWED_LANGUAGES = {'hy', 'xh', 'bs', 'cs', 'it', 'th', 'nl', 'hi', 'km', 'gd', 'br', 'la', 'ml', 'ne', 'ur', 'eo', 'mn', 'da', 'sq', 'ce', 'pa', 'zu', 'am', 'en', 'tr', 'yi', 'ro', 'sr', 'ky', 'bn', 'si', 'vi', 'bm', 'fa', 'ar', 'af', 'id', 'de', 'el', 'hu', 'st', 'es', 'ja', 'pl', 'ko', 'kw', 'ga', 'uk', 'ru', 'he', 'is', 'te', 'iu', 'nb', 'ka', 'no', 'tl', 'nv', 'fr', 'sv', 'zh', 'co', 'pt', 'hr', 'fi', 'bo', 'cy', 'sl', 'ku', 'et', 'bg', 'ny', 'mi', 'ps', 'ca', 'so', 'wo', 'to', 'ta', 'dz', 'cn', 'sk', 'sw', 'kk', 'gl', 'sh'} # Acquired by listing all unique languages in the dataset
