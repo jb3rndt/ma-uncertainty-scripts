@@ -22,36 +22,49 @@ def main():
         "movies",
         "weather",
     ]:
+        print(dataset)
         dataset_path = Path(
             f"/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/{dataset}.csv"
         )
-        example_dmvs_path = (
-            dataset_path.parent / f"{dataset}_example_dmvs_detection.json"
-        )
         dataset_types_path = dataset_path.parent / f"{dataset}_types.json"
+        example_dmvs_detection_filename = f"{dataset}_example_dmvs_detection.json"
 
-        if not example_dmvs_path.exists():
-            print(f"Generating example DMVs for {dataset} at {example_dmvs_path}...")
-            generate_example_dmvs(
-                dataset_path,
-                LLM_MODEL,
-                LLM_BASE_URL,
-                "placeholder",
-                f"{dataset}_example_dmvs_detection",
-            )
+        for example_dmvs_filename in [
+            example_dmvs_detection_filename,
+            f"{dataset}_example_dmvs_pollution.json",
+        ]:
+            example_dmvs_path = dataset_path.parent / example_dmvs_filename
 
-        if not (
-            Path(example_dmvs_path).parent
-            / f"{Path(example_dmvs_path).stem}.embeddings.json"
+            if example_dmvs_path.exists():
+                print(f"  Skipping example DMVs...")
+            else:
+                print(f"  Generating example DMVs at {example_dmvs_path}...")
+                generate_example_dmvs(
+                    dataset_path,
+                    LLM_MODEL,
+                    LLM_BASE_URL,
+                    "placeholder",
+                    Path(example_dmvs_filename).stem,
+                )
+
+        example_dmvs_detection_path = (
+            dataset_path.parent / example_dmvs_detection_filename
+        )
+        if (
+            Path(example_dmvs_detection_path).parent
+            / f"{Path(example_dmvs_detection_path).stem}.embeddings.json"
         ).exists():
+
+            print(f"  Skipping example embeddings...")
+        else:
             print(
-                f"Precomputing example embeddings for {dataset} at {example_dmvs_path}..."
+                f"  Precomputing example embeddings at {example_dmvs_detection_path}..."
             )
             precompute_detection_example_embeddings(
                 model_name=EMBEDDING_MODEL,
                 llm_base_url=LLM_BASE_URL,
                 llm_api_key="placeholder",
-                json_files=str(example_dmvs_path),
+                json_files=str(example_dmvs_detection_path),
             )
 
         cleaned_dataset_path = (
@@ -61,10 +74,10 @@ def main():
             cleaned_dataset_path.parent
             / f"{cleaned_dataset_path.stem}_value_embeddings.json"
         )
-        if not cleaned_value_embeddings_path.exists():
-            print(
-                f"Precomputing cleaned value embeddings for {dataset} at {CLEANED_DATA_PATH}..."
-            )
+        if cleaned_value_embeddings_path.exists():
+            print(f"  Skipping cleaned value embeddings...")
+        else:
+            print(f"  Precomputing cleaned value embeddings at {CLEANED_DATA_PATH}...")
             precompute_value_embeddings(
                 model_name=EMBEDDING_MODEL,
                 llm_base_url=LLM_BASE_URL,
@@ -75,10 +88,10 @@ def main():
                 ),
             )
 
-        print(f"Loading cached embeddings from {cleaned_value_embeddings_path}")
+        print(f"  Loading cached embeddings from {cleaned_value_embeddings_path}")
         cached_embeddings = json.load(open(cleaned_value_embeddings_path, "r"))
 
-        for folder in get_necessary_folders():
+        for folder in get_necessary_folders("20260428_115054"):
             if "ECAR" not in str(folder):
                 continue
 
@@ -86,10 +99,10 @@ def main():
                 folder / "completeness" / f"{dataset}.polluted_value_embeddings.json"
             )
             dataset_path = folder / "completeness" / f"{dataset}.polluted.csv"
-            if not value_embeddings_path.exists():
-                print(
-                    f"Precomputing value embeddings for {dataset} at {value_embeddings_path}..."
-                )
+            if value_embeddings_path.exists():
+                print(f"  Skipping value embeddings...")
+            else:
+                print(f"  Precomputing value embeddings at {value_embeddings_path}...")
                 precompute_value_embeddings(
                     model_name=EMBEDDING_MODEL,
                     llm_base_url=LLM_BASE_URL,
