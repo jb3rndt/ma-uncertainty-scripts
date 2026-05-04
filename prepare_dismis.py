@@ -23,9 +23,7 @@ def main():
         "weather",
     ]:
         print(dataset)
-        dataset_path = Path(
-            f"/Users/jberndt/Documents/Masterarbeit/data-pollution/data/cleaned/{dataset}.csv"
-        )
+        dataset_path = CLEANED_DATA_PATH / f"{dataset}.csv"
         dataset_types_path = dataset_path.parent / f"{dataset}_types.json"
         example_dmvs_detection_filename = f"{dataset}_example_dmvs_detection.json"
 
@@ -74,21 +72,25 @@ def main():
             cleaned_dataset_path.parent
             / f"{cleaned_dataset_path.stem}_value_embeddings.json"
         )
-        if cleaned_value_embeddings_path.exists():
-            print(f"  Skipping cleaned value embeddings...")
-        else:
-            print(f"  Precomputing cleaned value embeddings at {CLEANED_DATA_PATH}...")
-            precompute_value_embeddings(
-                model_name=EMBEDDING_MODEL,
-                llm_base_url=LLM_BASE_URL,
-                llm_api_key="placeholder",
-                datasets_and_types=(
-                    str(cleaned_dataset_path),
-                    str(dataset_types_path),
-                ),
-            )
+        cached_clean_embeddings = (
+            json.load(open(cleaned_value_embeddings_path, "r"))
+            if cleaned_value_embeddings_path.exists()
+            else None
+        )
+        print(f"  Precomputing cleaned value embeddings at {CLEANED_DATA_PATH}...")
+        precompute_value_embeddings(
+            model_name=EMBEDDING_MODEL,
+            llm_base_url=LLM_BASE_URL,
+            llm_api_key="placeholder",
+            datasets_and_types=(
+                str(cleaned_dataset_path),
+                str(dataset_types_path),
+            ),
+            cached_embeddings=cached_clean_embeddings,
+            column_types=["numeric", "categorical", "date", "text"],
+        )
 
-        print(f"  Loading cached embeddings from {cleaned_value_embeddings_path}")
+        print(f"  Reloading cached embeddings from {cleaned_value_embeddings_path}")
         cached_embeddings = json.load(open(cleaned_value_embeddings_path, "r"))
 
         for folder in get_necessary_folders("20260428_115054"):
@@ -99,20 +101,18 @@ def main():
                 folder / "completeness" / f"{dataset}.polluted_value_embeddings.json"
             )
             dataset_path = folder / "completeness" / f"{dataset}.polluted.csv"
-            if value_embeddings_path.exists():
-                print(f"  Skipping value embeddings...")
-            else:
-                print(f"  Precomputing value embeddings at {value_embeddings_path}...")
-                precompute_value_embeddings(
-                    model_name=EMBEDDING_MODEL,
-                    llm_base_url=LLM_BASE_URL,
-                    llm_api_key="placeholder",
-                    datasets_and_types=(
-                        str(dataset_path),
-                        str(dataset_types_path),
-                    ),
-                    cached_embeddings=cached_embeddings,
-                )
+            print(f"  Precomputing value embeddings at {value_embeddings_path}...")
+            precompute_value_embeddings(
+                model_name=EMBEDDING_MODEL,
+                llm_base_url=LLM_BASE_URL,
+                llm_api_key="placeholder",
+                datasets_and_types=(
+                    str(dataset_path),
+                    str(dataset_types_path),
+                ),
+                cached_embeddings=cached_embeddings,
+                column_types=["numeric", "categorical", "date", "text"],
+            )
 
 
 if __name__ == "__main__":
