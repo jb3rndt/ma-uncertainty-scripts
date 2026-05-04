@@ -314,7 +314,6 @@ def assess_completeness(folder: Path, force=False):
         polluted_folder=folder,
         metrics=[
             completeness_nullAndDMVRatio.__name__,
-            completeness_nullRatio.__name__,
             completeness_nullAndDMVRatio.__name__,
         ],
         metric_configs=[
@@ -458,7 +457,6 @@ def assess_completeness(folder: Path, force=False):
                     ),
                 }
             ),
-            completeness_nullRatio_config(),
         ],
         force=force,
     )

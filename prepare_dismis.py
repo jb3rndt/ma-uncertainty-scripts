@@ -49,7 +49,6 @@ def main():
             Path(example_dmvs_detection_path).parent
             / f"{Path(example_dmvs_detection_path).stem}.embeddings.json"
         ).exists():
-
             print(f"  Skipping example embeddings...")
         else:
             print(
@@ -84,13 +83,13 @@ def main():
                 str(dataset_types_path),
             ),
             cached_embeddings=cached_clean_embeddings,
-            column_types=["numeric", "categorical", "date", "text"],
+            column_types=["categorical", "date", "text"],
         )
 
         print(f"  Reloading cached embeddings from {cleaned_value_embeddings_path}")
         cached_embeddings = json.load(open(cleaned_value_embeddings_path, "r"))
 
-        for folder in get_necessary_folders("20260428_115054"):
+        for folder in get_necessary_folders():
             if "ECAR" not in str(folder):
                 continue
 
@@ -108,7 +107,7 @@ def main():
                     str(dataset_types_path),
                 ),
                 cached_embeddings=cached_embeddings,
-                column_types=["numeric", "categorical", "date", "text"],
+                column_types=["categorical", "date", "text"],
             )
 
 
