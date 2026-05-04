@@ -56,8 +56,10 @@ def execute_run(
     datasets: List[DSLiteral] = datasets,
     force: bool = False,
 ) -> Path | None:
-    if results_folder.exists() and not force:
-        print(f"Results folder {results_folder.absolute()} already exists. SKIPPING!")
+    if (results_folder / "dq_results.csv").exists() and not force:
+        print(
+            f"Results folder {(results_folder / "dq_results.csv").absolute()} already exists. SKIPPING!"
+        )
         return results_folder
 
     try:
