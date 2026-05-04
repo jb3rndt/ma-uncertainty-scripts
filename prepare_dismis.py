@@ -32,18 +32,15 @@ def main():
             f"{dataset}_example_dmvs_pollution.json",
         ]:
             example_dmvs_path = dataset_path.parent / example_dmvs_filename
-
-            if example_dmvs_path.exists():
-                print(f"  Skipping example DMVs...")
-            else:
-                print(f"  Generating example DMVs at {example_dmvs_path}...")
-                generate_example_dmvs(
-                    dataset_path,
-                    LLM_MODEL,
-                    LLM_BASE_URL,
-                    "placeholder",
-                    Path(example_dmvs_filename).stem,
-                )
+            print(f"  Generating example DMVs at {example_dmvs_path}...")
+            generate_example_dmvs(
+                dataset_path,
+                LLM_MODEL,
+                LLM_BASE_URL,
+                "placeholder",
+                Path(example_dmvs_filename).stem,
+                column_types=["numeric", "categorical", "date", "text"],
+            )
 
         example_dmvs_detection_path = (
             dataset_path.parent / example_dmvs_detection_filename
