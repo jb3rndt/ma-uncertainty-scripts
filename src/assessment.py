@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any, Callable, List
 
@@ -36,6 +37,7 @@ from src.cleaning.weather import WEATHER_ORIGINAL_CONSISTENCY_RULES
 from src.constants import (
     ALLOWED_GENRES,
     CLEANED_DATA_PATH,
+    ORIGINAL_DATA_PATH,
     TOP_OL_COLUMNS,
 )
 from src.utils import execute_run
@@ -308,171 +310,58 @@ def assess_tuple_consistency(folder: Path, force=False):
 
 
 def assess_completeness(folder: Path, force=False):
-    dataset_type = "polluted" if "polluted" in str(folder) else "cleaned"
-    return execute_run(
-        results_folder=folder / "results",
-        polluted_folder=folder,
-        metrics=[
-            completeness_nullAndDMVRatio.__name__,
-            completeness_nullAndDMVRatio.__name__,
-        ],
-        metric_configs=[
-            DatasetDependentMetricConfig(
-                config_per_dataset={
-                    r"weather.*": completeness_nullAndDMVRatio_config(
-                        explanatory_results_path=str(
-                            folder / "explanatory_results" / "weather"
-                        ),
-                        dismis_config=completeness_nullAndDMVRatio_config_dismis(
-                            value_embeddings_path=str(
-                                folder / f"weather.{dataset_type}_value_embeddings.json"
-                            ),
-                            example_dmvs_path=str(
-                                CLEANED_DATA_PATH
-                                / "weather_example_dmvs_detection.json"
-                            ),
-                            example_embeddings_path=str(
-                                CLEANED_DATA_PATH
-                                / "weather_example_dmvs_detection.embeddings.json"
-                            ),
-                            column_types={
-                                "Date": "date",
-                                "Location": "categorical",
-                                "MinTemp": "numeric",
-                                "MaxTemp": "numeric",
-                                "Rainfall": "numeric",
-                                "WindGustDir": "categorical",
-                                "WindGustSpeed": "numeric",
-                                "WindDir9am": "categorical",
-                                "WindDir3pm": "categorical",
-                                "WindSpeed9am": "numeric",
-                                "WindSpeed3pm": "numeric",
-                                "Humidity9am": "numeric",
-                                "Humidity3pm": "numeric",
-                                "Pressure9am": "numeric",
-                                "Pressure3pm": "numeric",
-                                "Temp9am": "numeric",
-                                "Temp3pm": "numeric",
-                                "RainToday": "categorical",
-                                "RainTomorrow": "categorical",
-                            },
-                        ),
-                    ),
-                    r"movies.*": completeness_nullAndDMVRatio_config(
-                        explanatory_results_path=str(
-                            folder / "explanatory_results" / "movies"
-                        ),
-                        dismis_config=completeness_nullAndDMVRatio_config_dismis(
-                            value_embeddings_path=str(
-                                folder / f"movies.{dataset_type}_value_embeddings.json"
-                            ),
-                            example_dmvs_path=str(
-                                CLEANED_DATA_PATH / "movies_example_dmvs_detection.json"
-                            ),
-                            example_embeddings_path=str(
-                                CLEANED_DATA_PATH
-                                / "movies_example_dmvs_detection.embeddings.json"
-                            ),
-                            column_types={
-                                "id": "numeric",
-                                "budget": "numeric",
-                                "genres": "text",
-                                "keywords": "text",
-                                "original_language": "categorical",
-                                "original_title": "categorical",
-                                "overview": "text",
-                                "popularity": "numeric",
-                                "production_companies": "text",
-                                "production_countries": "text",
-                                "release_date": "date",
-                                "revenue": "numeric",
-                                "runtime": "numeric",
-                                "spoken_languages": "text",
-                                "status": "categorical",
-                                "title": "text",
-                                "vote_average": "numeric",
-                                "vote_count": "numeric",
-                            },
-                        ),
-                    ),
-                    r"auto_sales.*": completeness_nullAndDMVRatio_config(
-                        explanatory_results_path=str(
-                            folder / "explanatory_results" / "auto_sales"
-                        ),
-                        dismis_config=completeness_nullAndDMVRatio_config_dismis(
-                            value_embeddings_path=str(
-                                folder
-                                / f"auto_sales.{dataset_type}_value_embeddings.json"
-                            ),
-                            example_dmvs_path=str(
-                                CLEANED_DATA_PATH
-                                / "auto_sales_example_dmvs_detection.json"
-                            ),
-                            example_embeddings_path=str(
-                                CLEANED_DATA_PATH
-                                / "auto_sales_example_dmvs_detection.embeddings.json"
-                            ),
-                            column_types={
-                                "ORDERNUMBER": "numeric",
-                                "QUANTITYORDERED": "numeric",
-                                "PRICEEACH": "numeric",
-                                "ORDERLINENUMBER": "numeric",
-                                "SALES": "numeric",
-                                "ORDERDATE": "date",
-                                "DAYS_SINCE_LASTORDER": "numeric",
-                                "STATUS": "categorical",
-                                "PRODUCTLINE": "categorical",
-                                "MSRP": "numeric",
-                                "PRODUCTCODE": "categorical",
-                                "CUSTOMERNAME": "text",
-                                "PHONE": "text",
-                                "ADDRESSLINE1": "text",
-                                "CITY": "text",
-                                "POSTALCODE": "text",
-                                "COUNTRY": "text",
-                                "CONTACTLASTNAME": "text",
-                                "CONTACTFIRSTNAME": "text",
-                                "DEALSIZE": "categorical",
-                            },
-                        ),
-                    ),
-                }
-            ),
-            DatasetDependentMetricConfig(
-                config_per_dataset={
-                    r"weather.*": completeness_nullAndDMVRatio_config(
-                        explanatory_results_path=str(
-                            folder / "explanatory_results" / "weather"
-                        ),
-                    ),
-                    r"movies.*": completeness_nullAndDMVRatio_config(
-                        explanatory_results_path=str(
-                            folder / "explanatory_results" / "movies"
-                        ),
-                    ),
-                    r"auto_sales.*": completeness_nullAndDMVRatio_config(
-                        explanatory_results_path=str(
-                            folder / "explanatory_results" / "auto_sales"
-                        ),
-                    ),
-                }
-            ),
-        ],
-        force=force,
+    dataset_type = (
+        "polluted"
+        if "polluted" in str(folder)
+        else "cleaned" if "cleaned" in str(folder) else "original"
     )
-
-
-def assess_completeness_original(folder: Path, force=False):
+    example_dmvs_folder = (
+        ORIGINAL_DATA_PATH if dataset_type == "original" else CLEANED_DATA_PATH
+    )
     return execute_run(
         results_folder=folder / "results",
         polluted_folder=folder,
         metrics=[
-            completeness_nullRatio.__name__,
+            completeness_nullAndDMVRatio.__name__,
             completeness_nullAndDMVRatio.__name__,
         ],
         metric_configs=[
-            completeness_nullRatio_config(),
-            completeness_nullAndDMVRatio_config(),
+            DatasetDependentMetricConfig(
+                config_per_dataset={
+                    f"{ds}.*": completeness_nullAndDMVRatio_config(
+                        explanatory_results_path=str(
+                            folder / "explanatory_results" / ds
+                        ),
+                        dismis_config=completeness_nullAndDMVRatio_config_dismis(
+                            value_embeddings_path=str(
+                                folder / f"{ds}.{dataset_type}_value_embeddings.json"
+                            ),
+                            example_dmvs_path=str(
+                                example_dmvs_folder
+                                / f"{ds}_example_dmvs_detection.json"
+                            ),
+                            example_embeddings_path=str(
+                                example_dmvs_folder
+                                / f"{ds}_example_dmvs_detection.embeddings.json"
+                            ),
+                            column_types=json.load(
+                                (example_dmvs_folder / f"{ds}_types.json").open("r")
+                            ),
+                        ),
+                    )
+                    for ds in ["weather", "movies", "auto_sales"]
+                }
+            ),
+            DatasetDependentMetricConfig(
+                config_per_dataset={
+                    f"{ds}.*": completeness_nullAndDMVRatio_config(
+                        explanatory_results_path=str(
+                            folder / "explanatory_results" / ds
+                        ),
+                    )
+                    for ds in ["weather", "movies", "auto_sales"]
+                }
+            ),
         ],
         force=force,
     )
