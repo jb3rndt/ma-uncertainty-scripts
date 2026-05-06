@@ -16,3 +16,5 @@ conda activate ma
 ~/ollama/bin/ollama serve &
 sleep 1
 python prepare_dismis.py
+
+kill $!
