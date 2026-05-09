@@ -80,15 +80,27 @@ humidity_rules = [
 ]
 
 
-def assess_consistency(folder: Path, force=False):
+def assess_consistency(
+    folder: Path,
+    force=False,
+    runtime: bool = True,
+    memory: bool = True,
+    disable_dq_explanations: bool = False,
+):
     is_unpadded = lambda value: not isinstance(value, str) or value.strip() == value
     no_semis = lambda value: ";" not in value
 
     metrics = [consistency_ruleBasedPipino.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         DatasetDependentMetricConfig(
+            measure_runtime=runtime,
+            measure_memory=memory,
+            disable_dq_explanations=disable_dq_explanations,
             config_per_dataset={
                 r"weather.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     skip_null_values=True,
                     column_rules={
                         "MinTemp": temp_rules,
@@ -103,6 +115,9 @@ def assess_consistency(folder: Path, force=False):
                     },
                 ),
                 r"movies.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     skip_null_values=True,
                     column_rules={
                         "runtime": [
@@ -128,6 +143,9 @@ def assess_consistency(folder: Path, force=False):
                     },
                 ),
                 r"auto_sales.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     skip_null_values=True,
                     column_rules={
                         "PRICEEACH": [
@@ -146,7 +164,7 @@ def assess_consistency(folder: Path, force=False):
                         ],
                     },
                 ),
-            }
+            },
         ),
     ]
 
@@ -159,19 +177,34 @@ def assess_consistency(folder: Path, force=False):
     )
 
 
-def assess_consistency_original_dataset(folder: Path, force=False):
+def assess_consistency_original_dataset(
+    folder: Path,
+    force=False,
+    runtime: bool = True,
+    memory: bool = True,
+    disable_dq_explanations: bool = False,
+):
     def unpack_json_each(key: str, rules: List):
         return [lambda value: rule(unpack_json_list(value, key)) for rule in rules]
 
     metrics = [consistency_ruleBasedPipino.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         DatasetDependentMetricConfig(
+            measure_runtime=runtime,
+            measure_memory=memory,
+            disable_dq_explanations=disable_dq_explanations,
             config_per_dataset={
                 r"weather.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     skip_null_values=True,
                     column_rules=WEATHER_ORIGINAL_CONSISTENCY_RULES,
                 ),
                 r"movies.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     skip_null_values=True,
                     column_rules={
                         **MOVIES_ORIGINAL_CONSISTENCY_RULES,
@@ -192,10 +225,13 @@ def assess_consistency_original_dataset(folder: Path, force=False):
                     },
                 ),
                 r"auto_sales.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     skip_null_values=True,
                     column_rules=AUTO_SALES_ORIGINAL_CONSISTENCY_RULES,
                 ),
-            }
+            },
         ),
     ]
 
@@ -208,12 +244,24 @@ def assess_consistency_original_dataset(folder: Path, force=False):
     )
 
 
-def assess_tuple_consistency_original_dataset(folder: Path, force=False):
+def assess_tuple_consistency_original_dataset(
+    folder: Path,
+    force=False,
+    runtime: bool = True,
+    memory: bool = True,
+    disable_dq_explanations: bool = False,
+):
     metrics = [consistency_ruleBasedPipino.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         DatasetDependentMetricConfig(
+            measure_runtime=runtime,
+            measure_memory=memory,
+            disable_dq_explanations=disable_dq_explanations,
             config_per_dataset={
                 r"weather.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     skip_null_values=True,
                     tuple_rules=[
                         lambda row: row["MinTemp"] <= row["MaxTemp"],
@@ -226,6 +274,9 @@ def assess_tuple_consistency_original_dataset(folder: Path, force=False):
                     ],
                 ),
                 r"movies.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     skip_null_values=True,
                     tuple_rules=[
                         lambda row: try_is_between(row["vote_average"], 0, 10),
@@ -233,6 +284,9 @@ def assess_tuple_consistency_original_dataset(folder: Path, force=False):
                     ],
                 ),
                 r"auto_sales.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     skip_null_values=True,
                     tuple_rules=[
                         lambda row: row["PRICEEACH"] <= row["SALES"]
@@ -241,7 +295,7 @@ def assess_tuple_consistency_original_dataset(folder: Path, force=False):
                         == row["SALES"],
                     ],
                 ),
-            }
+            },
         ),
     ]
 
@@ -254,12 +308,24 @@ def assess_tuple_consistency_original_dataset(folder: Path, force=False):
     )
 
 
-def assess_tuple_consistency(folder: Path, force=False):
+def assess_tuple_consistency(
+    folder: Path,
+    force=False,
+    runtime: bool = True,
+    memory: bool = True,
+    disable_dq_explanations: bool = False,
+):
     metrics = [consistency_ruleBasedPipino.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         DatasetDependentMetricConfig(
+            measure_runtime=runtime,
+            measure_memory=memory,
+            disable_dq_explanations=disable_dq_explanations,
             config_per_dataset={
                 r"weather.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     tuple_rules=[
                         lambda row: row["MinTemp"] <= row["MaxTemp"],
                         lambda row: try_is_between(row["Pressure9am"], 900, 1100)
@@ -278,6 +344,9 @@ def assess_tuple_consistency(folder: Path, force=False):
                     ],
                 ),
                 r"movies.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     tuple_rules=[
                         lambda row: try_is_between(row["vote_average"], 0, 10),
                         lambda row: try_is_between(row["runtime"], 0, 338),
@@ -285,6 +354,9 @@ def assess_tuple_consistency(folder: Path, force=False):
                     ],
                 ),
                 r"auto_sales.*": consistency_ruleBasedPipino_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     tuple_rules=[
                         lambda row: row["PRICEEACH"] <= row["SALES"]
                         and row["MSRP"] <= row["SALES"],
@@ -294,7 +366,7 @@ def assess_tuple_consistency(folder: Path, force=False):
                         == row["SALES"],
                     ],
                 ),
-            }
+            },
         ),
     ]
 
@@ -307,7 +379,13 @@ def assess_tuple_consistency(folder: Path, force=False):
     )
 
 
-def assess_completeness(folder: Path, force=False):
+def assess_completeness(
+    folder: Path,
+    force=False,
+    runtime: bool = True,
+    memory: bool = True,
+    disable_dq_explanations: bool = False,
+):
     dataset_type = (
         "polluted"
         if "polluted" in str(folder)
@@ -325,12 +403,21 @@ def assess_completeness(folder: Path, force=False):
         ],
         metric_configs=[
             DatasetDependentMetricConfig(
+                measure_runtime=runtime,
+                measure_memory=memory,
+                disable_dq_explanations=disable_dq_explanations,
                 config_per_dataset={
                     f"{ds}.*": completeness_nullAndDMVRatio_config(
+                        measure_runtime=runtime,
+                        measure_memory=memory,
+                        disable_dq_explanations=disable_dq_explanations,
                         explanatory_results_path=str(
                             folder / "explanatory_results" / ds
                         ),
                         dismis_config=completeness_nullAndDMVRatio_config_dismis(
+                            measure_runtime=runtime,
+                            measure_memory=memory,
+                            disable_dq_explanations=disable_dq_explanations,
                             value_embeddings_path=str(
                                 folder / f"{ds}.{dataset_type}_value_embeddings.json"
                             ),
@@ -348,57 +435,93 @@ def assess_completeness(folder: Path, force=False):
                         ),
                     )
                     for ds in ["weather", "movies", "auto_sales"]
-                }
+                },
             ),
             DatasetDependentMetricConfig(
+                measure_runtime=runtime,
+                measure_memory=memory,
+                disable_dq_explanations=disable_dq_explanations,
                 config_per_dataset={
                     f"{ds}.*": completeness_nullAndDMVRatio_config(
+                        measure_runtime=runtime,
+                        measure_memory=memory,
+                        disable_dq_explanations=disable_dq_explanations,
                         explanatory_results_path=str(
                             folder / "explanatory_results" / ds
                         ),
                     )
                     for ds in ["weather", "movies", "auto_sales"]
-                }
+                },
             ),
         ],
         force=force,
     )
 
 
-def assess_correctness(folder: Path, force=False):
+def assess_correctness(
+    folder: Path,
+    force=False,
+    runtime: bool = True,
+    memory: bool = True,
+    disable_dq_explanations: bool = False,
+):
     return execute_run(
         results_folder=folder / "results",
         polluted_folder=folder,
         metrics=[correctness_heinrich.__name__],
         metric_configs=[
             DatasetDependentMetricConfig(
+                measure_runtime=runtime,
+                measure_memory=memory,
+                disable_dq_explanations=disable_dq_explanations,
                 config_per_dataset={
                     r"weather.*": correctness_heinrich_config(
+                        measure_runtime=runtime,
+                        measure_memory=memory,
+                        disable_dq_explanations=disable_dq_explanations,
                         reference_file_path=folder / "weather.reference.csv",
                         superset_file_path=folder / "weather.superset.csv",
                     ),
                     r"movies.*": correctness_heinrich_config(
+                        measure_runtime=runtime,
+                        measure_memory=memory,
+                        disable_dq_explanations=disable_dq_explanations,
                         reference_file_path=folder / "movies.reference.csv",
                         superset_file_path=folder / "movies.superset.csv",
                     ),
                     r"auto_sales.*": correctness_heinrich_config(
+                        measure_runtime=runtime,
+                        measure_memory=memory,
+                        disable_dq_explanations=disable_dq_explanations,
                         reference_file_path=folder / "auto_sales.reference.csv",
                         superset_file_path=folder / "auto_sales.superset.csv",
                     ),
-                }
+                },
             ),
         ],
         force=force,
     )
 
 
-def assess_timeliness(folder: Path, force=False):
+def assess_timeliness(
+    folder: Path,
+    force=False,
+    runtime: bool = True,
+    memory: bool = True,
+    disable_dq_explanations: bool = False,
+):
     weather_relevance_interval = 365.25
     metrics = [timeliness_heinrich.__name__]
     metric_configs: List[str | None | MetricConfig] = [
         DatasetDependentMetricConfig(
+            measure_runtime=runtime,
+            measure_memory=memory,
+            disable_dq_explanations=disable_dq_explanations,
             config_per_dataset={
                 r"weather.*": timeliness_heinrich_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     timeliness_config_per_column={
                         col: timeliness_heinrich_column_config(
                             decline_rate=decline_rate,
@@ -420,9 +543,12 @@ def assess_timeliness(folder: Path, force=False):
                             ("Humidity9am", (24 / 6) / weather_relevance_interval),
                             ("Humidity3pm", (24 / 18) / weather_relevance_interval),
                         ]
-                    }
+                    },
                 ),
                 r"open_library.*": timeliness_heinrich_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     timeliness_config_per_column={
                         col: timeliness_heinrich_column_config(
                             decline_rate=stats["avg_changes"] / stats["avg_time"],
@@ -432,9 +558,12 @@ def assess_timeliness(folder: Path, force=False):
                             # simulated_timestamp_precision="year",
                         )
                         for col, stats in TOP_OL_COLUMNS
-                    }
+                    },
                 ),
                 r"auto_sales.*": timeliness_heinrich_config(
+                    measure_runtime=runtime,
+                    measure_memory=memory,
+                    disable_dq_explanations=disable_dq_explanations,
                     timeliness_config_per_column={
                         col: timeliness_heinrich_column_config(
                             decline_rate=0.1 / 365.25,
@@ -447,9 +576,9 @@ def assess_timeliness(folder: Path, force=False):
                             # simulated_timestamp_precision="year",
                         )
                         for col in ["ADDRESSLINE1", "CITY", "POSTALCODE", "COUNTRY"]
-                    }
+                    },
                 ),
-            }
+            },
         ),
     ]
 

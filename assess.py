@@ -44,25 +44,35 @@ def parse_args():
 
 def main(dim_to_reassess: str | None, force_evaluate: bool):
     all_result_folders: List[Path | None] = []
+    disable_dq_explanations = False
 
     for folder in get_necessary_folders():
         all_result_folders.extend(
             [
                 assess_completeness(
-                    Path(folder) / COMPLETENESS, force=dim_to_reassess == COMPLETENESS
+                    Path(folder) / COMPLETENESS,
+                    force=dim_to_reassess == COMPLETENESS,
+                    disable_dq_explanations=disable_dq_explanations,
                 ),
                 assess_correctness(
-                    Path(folder) / CORRECTNESS, force=dim_to_reassess == CORRECTNESS
+                    Path(folder) / CORRECTNESS,
+                    force=dim_to_reassess == CORRECTNESS,
+                    disable_dq_explanations=disable_dq_explanations,
                 ),
                 assess_consistency(
-                    Path(folder) / CONSISTENCY, force=dim_to_reassess == CONSISTENCY
+                    Path(folder) / CONSISTENCY,
+                    force=dim_to_reassess == CONSISTENCY,
+                    disable_dq_explanations=disable_dq_explanations,
                 ),
                 assess_tuple_consistency(
                     Path(folder) / CONSISTENCY_TUPLE,
                     force=dim_to_reassess == CONSISTENCY_TUPLE,
+                    disable_dq_explanations=disable_dq_explanations,
                 ),
                 assess_timeliness(
-                    Path(folder) / TIMELINESS, force=dim_to_reassess == TIMELINESS
+                    Path(folder) / TIMELINESS,
+                    force=dim_to_reassess == TIMELINESS,
+                    disable_dq_explanations=disable_dq_explanations,
                 ),
             ]
         )
@@ -70,16 +80,30 @@ def main(dim_to_reassess: str | None, force_evaluate: bool):
     all_result_folders.extend(
         [
             assess_completeness(
-                ORIGINAL_DATA_PATH / COMPLETENESS, force=force_evaluate
+                ORIGINAL_DATA_PATH / COMPLETENESS,
+                force=force_evaluate,
+                disable_dq_explanations=disable_dq_explanations,
             ),
-            assess_correctness(ORIGINAL_DATA_PATH / CORRECTNESS, force=force_evaluate),
+            assess_correctness(
+                ORIGINAL_DATA_PATH / CORRECTNESS,
+                force=force_evaluate,
+                disable_dq_explanations=disable_dq_explanations,
+            ),
             assess_consistency_original_dataset(
-                ORIGINAL_DATA_PATH / CONSISTENCY, force=force_evaluate
+                ORIGINAL_DATA_PATH / CONSISTENCY,
+                force=force_evaluate,
+                disable_dq_explanations=disable_dq_explanations,
             ),
             assess_tuple_consistency_original_dataset(
-                ORIGINAL_DATA_PATH / CONSISTENCY_TUPLE, force=force_evaluate
+                ORIGINAL_DATA_PATH / CONSISTENCY_TUPLE,
+                force=force_evaluate,
+                disable_dq_explanations=disable_dq_explanations,
             ),
-            assess_timeliness(ORIGINAL_DATA_PATH / TIMELINESS, force=force_evaluate),
+            assess_timeliness(
+                ORIGINAL_DATA_PATH / TIMELINESS,
+                force=force_evaluate,
+                disable_dq_explanations=disable_dq_explanations,
+            ),
         ]
     )
 
