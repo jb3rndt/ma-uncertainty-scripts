@@ -3,7 +3,8 @@ import json
 import shutil
 from hashlib import sha1
 from pathlib import Path
-from typing import Generator, List, Literal, Tuple, cast
+from time import time
+from typing import List, Literal, Tuple
 
 import numpy as np
 import pandas as pd
@@ -222,12 +223,16 @@ def get_necessary_folders(
     ]
 
 
-def load_raw_results(run_name: str | None = None, original: bool = False):
+def load_raw_results(
+    run_name: str | None = None, original: bool = False, cleaned: bool = True
+):
     return {
         (dim_folder.name, folder.name): json.load(
             (dim_folder / "results" / "raw_results.json").open()
         )
-        for folder in get_necessary_folders(run_name, original=original)
+        for folder in get_necessary_folders(
+            run_name, original=original, cleaned=cleaned
+        )
         for dim_folder in folder.glob("*")
         if dim_folder.is_dir()
         and (dim_folder / "results" / "raw_results.json").exists()
@@ -260,12 +265,16 @@ def flatten_raw_results(raw_results: dict) -> pd.DataFrame:
     )
 
 
-def load_evaluations(run_name: str | None = None, original: bool = False):
+def load_evaluations(
+    run_name: str | None = None, original: bool = False, cleaned: bool = True
+):
     return {
         (dim_folder.name, folder.name): json.load(
             (dim_folder / "results" / "evaluations.json").open()
         )
-        for folder in get_necessary_folders(run_name, original=original)
+        for folder in get_necessary_folders(
+            run_name, original=original, cleaned=cleaned
+        )
         for dim_folder in folder.glob("*")
         if dim_folder.is_dir()
         and (dim_folder / "results" / "evaluations.json").exists()
@@ -314,26 +323,32 @@ def res_raw(df: pd.DataFrame) -> List[ColumnRawData]:
 
 
 def get_raw_results(
-    run_name: str | None = None, original: bool = False
+    run_name: str | None = None,
+    original: bool = False,
+    cleaned: bool = True,
+    ignore_key: bool = False,
 ) -> pd.DataFrame:
-    key = "__df_raw_results__"
+    key = str(time()) if ignore_key else "__df_raw_results__"
     if key not in globals():
         print("Loading raw results...")
         globals()[key] = flatten_raw_results(
-            load_raw_results(run_name, original=original)
+            load_raw_results(run_name, original=original, cleaned=cleaned)
         )
 
     return globals()[key]
 
 
 def get_evaluations(
-    run_name: str | None = None, original: bool = False
+    run_name: str | None = None,
+    original: bool = False,
+    cleaned: bool = True,
+    ignore_key: bool = False,
 ) -> pd.DataFrame:
-    key = "__df_evaluations__"
+    key = str(time()) if ignore_key else "__df_evaluations__"
     if key not in globals():
         print("Loading evaluations...")
         globals()[key] = flatten_evaluations(
-            load_evaluations(run_name, original=original)
+            load_evaluations(run_name, original=original, cleaned=cleaned)
         )
 
     return globals()[key]

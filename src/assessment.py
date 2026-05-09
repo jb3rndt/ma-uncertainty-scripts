@@ -91,8 +91,6 @@ def assess_consistency(folder: Path, force=False):
                     column_rules={
                         "MinTemp": temp_rules,
                         "MaxTemp": temp_rules,
-                        "Temp9am": temp_rules,
-                        "Temp3pm": temp_rules,
                         "WindGustSpeed": speed_rules,
                         "WindSpeed9am": speed_rules,
                         "WindSpeed3pm": speed_rules,
