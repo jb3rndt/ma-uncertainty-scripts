@@ -4,7 +4,6 @@ from typing import List
 
 from src.assessment import (
     assess_completeness,
-    assess_completeness_original,
     assess_consistency,
     assess_consistency_original_dataset,
     assess_correctness,
@@ -70,7 +69,7 @@ def main(dim_to_reassess: str | None, force_evaluate: bool):
 
     all_result_folders.extend(
         [
-            assess_completeness_original(
+            assess_completeness(
                 ORIGINAL_DATA_PATH / COMPLETENESS, force=force_evaluate
             ),
             assess_correctness(ORIGINAL_DATA_PATH / CORRECTNESS, force=force_evaluate),
