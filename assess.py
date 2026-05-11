@@ -34,6 +34,10 @@ def parse_args():
         help="Dimension to reassess in the latest run.",
     )
     parser.add_argument(
+        "--run",
+        help="The run to target for assessment instead of the latest.",
+    )
+    parser.add_argument(
         "-f",
         "--force-evaluate",
         action="store_true",
@@ -42,11 +46,11 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(dim_to_reassess: str | None, force_evaluate: bool):
+def main(run_name: str | None, dim_to_reassess: str | None, force_evaluate: bool):
     all_result_folders: List[Path | None] = []
     disable_dq_explanations = False
 
-    for folder in get_necessary_folders():
+    for folder in get_necessary_folders(run_name):
         all_result_folders.extend(
             [
                 assess_completeness(
@@ -118,5 +122,6 @@ if __name__ == "__main__":
     args = parse_args()
     dim_to_reassess = args.reassess
     force_evaluate = args.force_evaluate
+    run_name = args.run
 
-    main(dim_to_reassess, force_evaluate)
+    main(run_name, dim_to_reassess, force_evaluate)
