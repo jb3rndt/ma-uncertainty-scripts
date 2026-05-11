@@ -10,6 +10,8 @@ from matplotlib import pyplot as plt
 from sklearn import ensemble
 from sklearn.metrics import auc, confusion_matrix, log_loss, roc_curve
 
+from src.utils import init_theme
+
 
 def plot_roc_curve(model, X_test, y_test):
     y_prob = model.predict_proba(X_test)[:, 1]
@@ -72,7 +74,7 @@ def plot_loss(clf: ensemble.GradientBoostingClassifier, X_test, y_test, n_estima
 
 
 def plot_results(results_folder: Path, downstream_tasks: Dict[str, Tuple]):
-    sns.set_theme()
+    init_theme()
 
     if not (results_folder / "results.csv").exists():
         return
@@ -86,15 +88,20 @@ def plot_results(results_folder: Path, downstream_tasks: Dict[str, Tuple]):
     dataset = config.get("dataset")
     _, _, labels = downstream_tasks[dataset]
     legend_labels = {
-        "cleaned": "Cleaned Data (Full Dataset)",
-        "polluted": "Polluted Data (Full Dataset)",
-        "filtered_dq": "Polluted Data Filtered by DQ",
-        "filtered_dq_certainty": "Polluted Data Filtered by DQ * C",
+        "cleaned": "Cleaned Unfiltered",
+        "polluted": "Polluted Unfiltered",
+        "filtered_dq": "Filtered by DQ",
+        "filtered_dq_certainty": "Filtered by DQ * C",
     }
 
     fig, ax = plt.subplots()
     # ax2 = ax.twinx()
-    for i, (data, group) in enumerate(df.groupby("data")):
+    for i, (data, group) in enumerate(
+        df.sort_values(
+            "data",
+            key=lambda x: x.map(lambda y: list(legend_labels.keys()).index(str(y))),
+        ).groupby("data", sort=False)
+    ):
         mean_scores = group.groupby("threshold", dropna=False)["score"].mean()
         if all(mean_scores.index.isna()):
             ax.axhline(
@@ -114,5 +121,8 @@ def plot_results(results_folder: Path, downstream_tasks: Dict[str, Tuple]):
     ax.legend()
     ax.set_ylabel(labels["ylabel"])
     ax.set_xlabel(labels["xlabel"])
-    fig.suptitle(labels["title"])
-    fig.savefig(results_folder / "plot.pdf", bbox_inches="tight")
+    path = Path(
+        f"plots/downstream/{config['dataset']}_{config['target_col']}_{results_folder.name}.pdf"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, bbox_inches="tight")

@@ -8,10 +8,12 @@ from typing import List, Literal, Tuple
 
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from matplotlib import pyplot as plt
 
 from metis.dq_orchestrator import DQOrchestrator
 from metis.metric.config import MetricConfig
+from metis.utils.bench_decorator import BenchmarkResults
 from src.constants import (
     CLEANED_DATA_PATH,
     ORIGINAL_DATA_PATH,
@@ -22,6 +24,19 @@ from src.evaluation.types import ColumnEvaluationResult, ColumnRawData
 
 DSLiteral = Literal["weather", "auto_sales", "movies", "open_library"]
 datasets: List[DSLiteral] = ["weather", "auto_sales", "movies", "open_library"]
+
+
+def init_theme(width_scale=1.0, kwargs={}):
+    sns.set_theme(
+        rc={
+            "text.usetex": True,
+            "font.size": 14 / width_scale,
+            "axes.titlesize": 14 / width_scale,
+            "font.family": "serif",
+            "font.serif": ["Computer Modern Roman"],
+            **kwargs,
+        }
+    )
 
 
 def materialize(data: str | dict, file_path: Path | str | None = None) -> str:
