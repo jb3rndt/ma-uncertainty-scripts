@@ -48,3 +48,6 @@ class ColumnEvaluationResult:
     tn_weighted: int
     js_divergence_per_method_and_model: Dict[str, Dict[str, float]]
     js_divergence_per_method_and_model_weighted: Dict[str, Dict[str, float]]
+    runtime: float | None = None
+    memory_end: float | None = None
+    memory_peak: float | None = None

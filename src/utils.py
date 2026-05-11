@@ -149,6 +149,11 @@ def grouped_results_and_certainties(
         )
         dq_explanation = pd.DataFrame(None, index=dq_results.index)
         dq_certainties = pd.DataFrame(None, index=dq_results.index)
+        bench = BenchmarkResults(
+            group["runtime"].iloc[0] if "runtime" in group.columns else None,
+            group["memory_end"].iloc[0] if "memory_end" in group.columns else None,
+            group["memory_peak"].iloc[0] if "memory_peak" in group.columns else None,
+        )
 
         for column_key, data in group.groupby("columnNames"):
             column = parse_columnNames(str(column_key))
@@ -176,7 +181,9 @@ def grouped_results_and_certainties(
         dq_results.fillna(1.0, inplace=True)
         dq_certainties.fillna(1.0, inplace=True)
 
-        yield str(dataset), str(metric), dq_results, dq_certainties, dq_explanation
+        yield str(dataset), str(
+            metric
+        ), dq_results, dq_certainties, dq_explanation, bench
 
 
 def make_labels(df: pd.DataFrame) -> List[str]:

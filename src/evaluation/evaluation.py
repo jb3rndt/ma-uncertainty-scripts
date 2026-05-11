@@ -134,7 +134,7 @@ def evaluate_run(
 
     dq_results_flat = pd.read_csv(results_folder / "dq_results.csv")
 
-    for dataset, metric, dq_results, dq_certainties, _ in grouped_results_and_certainties(
+    for dataset, metric, dq_results, dq_certainties, _, bench in grouped_results_and_certainties(
         dq_results_flat
     ):
         data = reference_per_data_config[dataset]["data"]
@@ -282,6 +282,9 @@ def evaluate_run(
                     tn_weighted=int(TNW[col]),
                     js_divergence_per_method_and_model={},  # aggregation_results["divergence"],
                     js_divergence_per_method_and_model_weighted={},  # aggregation_results["weighted_divergence"],
+                    runtime=bench.runtime,
+                    memory_end=bench.memory_end,
+                    memory_peak=bench.memory_peak,
                 )
             )
 
