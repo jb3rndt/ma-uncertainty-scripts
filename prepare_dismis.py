@@ -1,3 +1,4 @@
+import argparse
 import json
 from pathlib import Path
 
@@ -15,6 +16,14 @@ LLM_MODEL = "qwen3:8b"
 LLM_BASE_URL = "http://localhost:11434/v1/"
 EMBEDDING_MODEL = "qwen3-embedding:8b"
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Prepare for data quality assessment.")
+    parser.add_argument(
+        "--skip-explanations",
+        action="store_true",
+        help="Whether to skip generating explanations for the latest run.",
+    )
+    return parser.parse_args()
 
 def generate_example_dmvs_detection(dataset_folder: Path, dataset: str):
     example_dmvs_detection_path = (
@@ -93,7 +102,7 @@ def compute_embeddings(dataset_folder: Path, dataset: str):
     )
 
 
-def main():
+def main(run_name: str | None):
     for dataset in [
         "auto_sales",
         "movies",
@@ -116,7 +125,7 @@ def main():
 
         cached_embeddings = json.load(open(cleaned_value_embeddings_path, "r"))
 
-        for folder in get_necessary_folders():
+        for folder in get_necessary_folders(run_name):
             if "ECAR" not in str(folder):
                 continue
 
@@ -139,4 +148,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    run_name = args.run
+
+    main(run_name)
