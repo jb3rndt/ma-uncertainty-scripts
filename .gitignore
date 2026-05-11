@@ -225,3 +225,4 @@ metis
 !.gitignore
 !.python-version
 regression-results
+plots
