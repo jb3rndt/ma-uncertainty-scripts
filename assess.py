@@ -43,12 +43,20 @@ def parse_args():
         action="store_true",
         help="Whether to force evaluation for the latest run.",
     )
+    parser.add_argument(
+        "--skip-explanations",
+        action="store_true",
+        help="Whether to skip generating explanations for the latest run.",
+    )
     return parser.parse_args()
 
 
-def main(run_name: str | None, dim_to_reassess: str | None, force_evaluate: bool):
+def main(run_name: str | None, dim_to_reassess: str | None, force_evaluate: bool, skip_dq_explanations: bool):
     all_result_folders: List[Path | None] = []
-    disable_dq_explanations = False
+    disable_dq_explanations = skip_dq_explanations
+    print(f"Run name: {run_name}")
+    print(f"Reassessing dimension: {dim_to_reassess}")
+    print(f"Skipping DQ explanations: {skip_dq_explanations}")
 
     for folder in get_necessary_folders(run_name):
         all_result_folders.extend(
@@ -123,5 +131,6 @@ if __name__ == "__main__":
     dim_to_reassess = args.reassess
     force_evaluate = args.force_evaluate
     run_name = args.run
+    skip_dq_explanations = args.skip_explanations
 
-    main(run_name, dim_to_reassess, force_evaluate)
+    main(run_name, dim_to_reassess, force_evaluate, skip_dq_explanations)

@@ -45,4 +45,4 @@ fi
 echo "===== End machine info ====="
 
 export FAISS_DISABLE_CPU_FEATURES="AVX2,AVX512"
-python assess.py
+python assess.py --run 20260509_172316_time_no_certainty_1 --skip-explanations
