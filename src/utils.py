@@ -165,9 +165,17 @@ def grouped_results_and_certainties(
         dq_explanation = pd.DataFrame(None, index=dq_results.index)
         dq_certainties = pd.DataFrame(None, index=dq_results.index)
         bench = BenchmarkResults(
-            group["runtime"].iloc[0] if "runtime" in group.columns else None,
-            group["memory_end"].iloc[0] if "memory_end" in group.columns else None,
-            group["memory_peak"].iloc[0] if "memory_peak" in group.columns else None,
+            float(group["runtime"].iloc[0]) if "runtime" in group.columns else None,
+            (
+                float(group["memory_end"].iloc[0])
+                if "memory_end" in group.columns
+                else None
+            ),
+            (
+                float(group["memory_peak"].iloc[0])
+                if "memory_peak" in group.columns
+                else None
+            ),
         )
 
         for column_key, data in group.groupby("columnNames"):
@@ -235,9 +243,10 @@ def get_necessary_folders(
     assert (
         pollution_folder.exists()
     ), f"Pollution folder {pollution_folder} does not exist."
-    polluted_folders = [
-        folder for folder in pollution_folder.glob("*") if folder.is_dir()
-    ]
+    polluted_folders = sorted(
+        [folder for folder in pollution_folder.glob("*") if folder.is_dir()],
+        key=lambda f: float(f.name.split("p")[0]),
+    )
 
     return sorted(polluted_folders) + [
         *([ORIGINAL_DATA_PATH] if original else []),
