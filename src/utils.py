@@ -357,32 +357,20 @@ def get_raw_results(
     run_name: str | None = None,
     original: bool = False,
     cleaned: bool = True,
-    ignore_key: bool = False,
 ) -> pd.DataFrame:
-    key = str(time()) if ignore_key else "__df_raw_results__"
-    if key not in globals():
-        print("Loading raw results...")
-        globals()[key] = flatten_raw_results(
-            load_raw_results(run_name, original=original, cleaned=cleaned)
-        )
-
-    return globals()[key]
+    return flatten_raw_results(
+        load_raw_results(run_name, original=original, cleaned=cleaned)
+    )
 
 
 def get_evaluations(
     run_name: str | None = None,
     original: bool = False,
     cleaned: bool = True,
-    ignore_key: bool = False,
 ) -> pd.DataFrame:
-    key = str(time()) if ignore_key else "__df_evaluations__"
-    if key not in globals():
-        print("Loading evaluations...")
-        globals()[key] = flatten_evaluations(
-            load_evaluations(run_name, original=original, cleaned=cleaned)
-        )
-
-    return globals()[key]
+    return flatten_evaluations(
+        load_evaluations(run_name, original=original, cleaned=cleaned)
+    )
 
 
 def first_or_none(iterable):
@@ -406,7 +394,7 @@ def grouped_figure(
         fig, axes = plt.subplots(
             nrows=nrows,
             ncols=ncols,
-            figsize=(figsize[0] * ncols, figsize[1] * nrows),
+            figsize=(10, 10 * nrows / ncols),
             sharex=True,
             sharey=True,
         )
