@@ -74,7 +74,7 @@ def main(
     force_evaluate: bool,
     disable_dq_explanations: bool,
 ):
-    for folder in get_necessary_folders(run_name):
+    for folder in get_necessary_folders(run_name, cleaned=True):
         for dim in VALID_DIMS:
             result_folder = DIM_ASSESS_FUNCTION[dim](
                 folder / dim,

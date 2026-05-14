@@ -233,7 +233,7 @@ def normalize_pollution_rate(rate: float) -> float:
 
 
 def get_necessary_folders(
-    run_name: str | None = None, original: bool = False, cleaned: bool = True
+    run_name: str | None = None, original: bool = False, cleaned: bool = False
 ):
     pollution_folder = (
         max([folder for folder in POLLUTED_DATA_PATH.glob("*") if folder.is_dir()])
@@ -248,14 +248,14 @@ def get_necessary_folders(
         key=lambda f: float(f.name.split("p")[0]),
     )
 
-    return sorted(polluted_folders) + [
+    return polluted_folders + [
         *([ORIGINAL_DATA_PATH] if original else []),
         *([CLEANED_DATA_PATH] if cleaned else []),
     ]
 
 
 def load_raw_results(
-    run_name: str | None = None, original: bool = False, cleaned: bool = True
+    run_name: str | None = None, original: bool = False, cleaned: bool = False
 ):
     return {
         (dim_folder.name, folder.name): json.load(
@@ -297,7 +297,7 @@ def flatten_raw_results(raw_results: dict) -> pd.DataFrame:
 
 
 def load_evaluations(
-    run_name: str | None = None, original: bool = False, cleaned: bool = True
+    run_name: str | None = None, original: bool = False, cleaned: bool = False
 ):
     return {
         (dim_folder.name, folder.name): json.load(

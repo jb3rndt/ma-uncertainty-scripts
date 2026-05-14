@@ -19,9 +19,8 @@ EMBEDDING_MODEL = "qwen3-embedding:8b"
 def parse_args():
     parser = argparse.ArgumentParser(description="Prepare for data quality assessment.")
     parser.add_argument(
-        "--skip-explanations",
-        action="store_true",
-        help="Whether to skip generating explanations for the latest run.",
+        "--run",
+        help="The run to target for assessment instead of the latest.",
     )
     return parser.parse_args()
 
