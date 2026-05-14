@@ -51,7 +51,12 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(run_name: str | None, dim_to_reassess: str | None, force_evaluate: bool, skip_dq_explanations: bool):
+def main(
+    run_name: str | None,
+    dim_to_reassess: str | None,
+    force_evaluate: bool,
+    skip_dq_explanations: bool,
+):
     all_result_folders: List[Path | None] = []
     disable_dq_explanations = skip_dq_explanations
     print(f"Run name: {run_name}")
@@ -61,11 +66,6 @@ def main(run_name: str | None, dim_to_reassess: str | None, force_evaluate: bool
     for folder in get_necessary_folders(run_name):
         all_result_folders.extend(
             [
-                assess_completeness(
-                    Path(folder) / COMPLETENESS,
-                    force=dim_to_reassess == COMPLETENESS,
-                    disable_dq_explanations=disable_dq_explanations,
-                ),
                 assess_correctness(
                     Path(folder) / CORRECTNESS,
                     force=dim_to_reassess == CORRECTNESS,
@@ -86,6 +86,11 @@ def main(run_name: str | None, dim_to_reassess: str | None, force_evaluate: bool
                     force=dim_to_reassess == TIMELINESS,
                     disable_dq_explanations=disable_dq_explanations,
                 ),
+                assess_completeness(
+                    Path(folder) / COMPLETENESS,
+                    force=dim_to_reassess == COMPLETENESS,
+                    disable_dq_explanations=disable_dq_explanations,
+                ),
             ]
         )
 
@@ -93,27 +98,27 @@ def main(run_name: str | None, dim_to_reassess: str | None, force_evaluate: bool
         [
             assess_completeness(
                 ORIGINAL_DATA_PATH / COMPLETENESS,
-                force=force_evaluate,
+                force=dim_to_reassess == COMPLETENESS,
                 disable_dq_explanations=disable_dq_explanations,
             ),
             assess_correctness(
                 ORIGINAL_DATA_PATH / CORRECTNESS,
-                force=force_evaluate,
+                force=dim_to_reassess == CORRECTNESS,
                 disable_dq_explanations=disable_dq_explanations,
             ),
             assess_consistency_original_dataset(
                 ORIGINAL_DATA_PATH / CONSISTENCY,
-                force=force_evaluate,
+                force=dim_to_reassess == CONSISTENCY,
                 disable_dq_explanations=disable_dq_explanations,
             ),
             assess_tuple_consistency_original_dataset(
                 ORIGINAL_DATA_PATH / CONSISTENCY_TUPLE,
-                force=force_evaluate,
+                force=dim_to_reassess == CONSISTENCY_TUPLE,
                 disable_dq_explanations=disable_dq_explanations,
             ),
             assess_timeliness(
                 ORIGINAL_DATA_PATH / TIMELINESS,
-                force=force_evaluate,
+                force=dim_to_reassess == TIMELINESS,
                 disable_dq_explanations=disable_dq_explanations,
             ),
         ]
@@ -123,7 +128,7 @@ def main(run_name: str | None, dim_to_reassess: str | None, force_evaluate: bool
 
     for result_folder in all_result_folders:
         if result_folder:
-            evaluate_run(result_folder)
+            evaluate_run(result_folder, not force_evaluate)
 
 
 if __name__ == "__main__":
@@ -132,5 +137,7 @@ if __name__ == "__main__":
     force_evaluate = args.force_evaluate
     run_name = args.run
     skip_dq_explanations = args.skip_explanations
+
+    print("Args:", args)
 
     main(run_name, dim_to_reassess, force_evaluate, skip_dq_explanations)
