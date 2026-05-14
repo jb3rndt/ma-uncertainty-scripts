@@ -7,6 +7,7 @@
 #SBATCH --nodes=1
 #SBATCH --time=16:00:00
 #SBATCH --output=logs/assess_%j.log
+#SBATCH -C "CPU_SKU:5220S"
 
 eval "$(conda shell.bash hook)"
 conda activate ma
@@ -45,4 +46,4 @@ fi
 echo "===== End machine info ====="
 
 export FAISS_DISABLE_CPU_FEATURES="AVX2,AVX512"
-python assess.py --run 20260509_172316_time_no_certainty_1 --skip-explanations
+python assess.py

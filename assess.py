@@ -22,7 +22,7 @@ from src.constants import (
 from src.evaluation.evaluation import evaluate_run
 from src.utils import get_necessary_folders
 
-VALID_DIMS = [TIMELINESS, COMPLETENESS, CONSISTENCY, CONSISTENCY_TUPLE, CORRECTNESS]
+VALID_DIMS = [TIMELINESS, CONSISTENCY, CONSISTENCY_TUPLE, CORRECTNESS, COMPLETENESS]
 
 
 def parse_args():
@@ -44,89 +44,52 @@ def parse_args():
         help="Whether to force evaluation for the latest run.",
     )
     parser.add_argument(
-        "--skip-explanations",
+        "--disable-dq-explanations",
         action="store_true",
-        help="Whether to skip generating explanations for the latest run.",
+        help="Whether to disable generating explanations for the latest run.",
     )
     return parser.parse_args()
+
+
+DIM_ASSESS_FUNCTION = {
+    CORRECTNESS: assess_correctness,
+    CONSISTENCY: assess_consistency,
+    CONSISTENCY_TUPLE: assess_tuple_consistency,
+    TIMELINESS: assess_timeliness,
+    COMPLETENESS: assess_completeness,
+}
+
+ORIGINAL_DIM_ASSESS_FUNCTION = {
+    CORRECTNESS: assess_correctness,
+    CONSISTENCY: assess_consistency_original_dataset,
+    CONSISTENCY_TUPLE: assess_tuple_consistency_original_dataset,
+    TIMELINESS: assess_timeliness,
+    COMPLETENESS: assess_completeness,
+}
 
 
 def main(
     run_name: str | None,
     dim_to_reassess: str | None,
     force_evaluate: bool,
-    skip_dq_explanations: bool,
+    disable_dq_explanations: bool,
 ):
-    all_result_folders: List[Path | None] = []
-    disable_dq_explanations = skip_dq_explanations
-    print(f"Run name: {run_name}")
-    print(f"Reassessing dimension: {dim_to_reassess}")
-    print(f"Skipping DQ explanations: {skip_dq_explanations}")
-
     for folder in get_necessary_folders(run_name):
-        all_result_folders.extend(
-            [
-                assess_correctness(
-                    Path(folder) / CORRECTNESS,
-                    force=dim_to_reassess == CORRECTNESS,
-                    disable_dq_explanations=disable_dq_explanations,
-                ),
-                assess_consistency(
-                    Path(folder) / CONSISTENCY,
-                    force=dim_to_reassess == CONSISTENCY,
-                    disable_dq_explanations=disable_dq_explanations,
-                ),
-                assess_tuple_consistency(
-                    Path(folder) / CONSISTENCY_TUPLE,
-                    force=dim_to_reassess == CONSISTENCY_TUPLE,
-                    disable_dq_explanations=disable_dq_explanations,
-                ),
-                assess_timeliness(
-                    Path(folder) / TIMELINESS,
-                    force=dim_to_reassess == TIMELINESS,
-                    disable_dq_explanations=disable_dq_explanations,
-                ),
-                assess_completeness(
-                    Path(folder) / COMPLETENESS,
-                    force=dim_to_reassess == COMPLETENESS,
-                    disable_dq_explanations=disable_dq_explanations,
-                ),
-            ]
+        for dim in VALID_DIMS:
+            result_folder = DIM_ASSESS_FUNCTION[dim](
+                folder / dim,
+                force=dim_to_reassess == dim,
+                disable_dq_explanations=disable_dq_explanations,
+            )
+            if result_folder:
+                evaluate_run(result_folder, not force_evaluate)
+
+    for dim in VALID_DIMS:
+        result_folder = ORIGINAL_DIM_ASSESS_FUNCTION[dim](
+            ORIGINAL_DATA_PATH / dim,
+            force=dim_to_reassess == dim,
+            disable_dq_explanations=disable_dq_explanations,
         )
-
-    all_result_folders.extend(
-        [
-            assess_completeness(
-                ORIGINAL_DATA_PATH / COMPLETENESS,
-                force=dim_to_reassess == COMPLETENESS,
-                disable_dq_explanations=disable_dq_explanations,
-            ),
-            assess_correctness(
-                ORIGINAL_DATA_PATH / CORRECTNESS,
-                force=dim_to_reassess == CORRECTNESS,
-                disable_dq_explanations=disable_dq_explanations,
-            ),
-            assess_consistency_original_dataset(
-                ORIGINAL_DATA_PATH / CONSISTENCY,
-                force=dim_to_reassess == CONSISTENCY,
-                disable_dq_explanations=disable_dq_explanations,
-            ),
-            assess_tuple_consistency_original_dataset(
-                ORIGINAL_DATA_PATH / CONSISTENCY_TUPLE,
-                force=dim_to_reassess == CONSISTENCY_TUPLE,
-                disable_dq_explanations=disable_dq_explanations,
-            ),
-            assess_timeliness(
-                ORIGINAL_DATA_PATH / TIMELINESS,
-                force=dim_to_reassess == TIMELINESS,
-                disable_dq_explanations=disable_dq_explanations,
-            ),
-        ]
-    )
-
-    print("Start evaluations")
-
-    for result_folder in all_result_folders:
         if result_folder:
             evaluate_run(result_folder, not force_evaluate)
 
@@ -136,8 +99,8 @@ if __name__ == "__main__":
     dim_to_reassess = args.reassess
     force_evaluate = args.force_evaluate
     run_name = args.run
-    skip_dq_explanations = args.skip_explanations
+    disable_dq_explanations = args.disable_dq_explanations
 
     print("Args:", args)
 
-    main(run_name, dim_to_reassess, force_evaluate, skip_dq_explanations)
+    main(run_name, dim_to_reassess, force_evaluate, disable_dq_explanations)
